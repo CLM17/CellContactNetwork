@@ -3,7 +3,6 @@ close all
 % This script plots the HeLa cell network on an RGB microcsopy image.
 % It saves the image as <well>_network.tif, where <well> is the well name.
 % You can find the resulting image in the well's folder.
-  
 
 %% --------------------------SPECIFY PARAMETERS----------------------------
 
