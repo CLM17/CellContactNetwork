@@ -100,5 +100,4 @@ function allData = load_data_from_well(allData, well, well_folder)
     allData.(well).G = G;
     allData.(well).xNodes = xNodes;
     allData.(well).yNodes = yNodes;
-
 end
