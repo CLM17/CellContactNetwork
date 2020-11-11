@@ -1,6 +1,6 @@
 function simulate(experiment, magnification, well, fieldSize, keepDistancesString, description)
     
-    root = fullfile('..','Experiments', experiment, magnification);
+    root = fullfile('..','..','Experiments', experiment, magnification);
     cutoffDistance = 250; % cutoff in micron
     
     if strcmp(keepDistancesString, 'true')
