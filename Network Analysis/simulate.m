@@ -1,4 +1,4 @@
-function simulate(experiment, magnification, well, keepDistancesString, description)
+function simulate(experiment, magnification, well, fieldSize, keepDistancesString, description)
     
     root = fullfile('..','Experiments', experiment, magnification);
     cutoffDistance = 250; % cutoff in micron
@@ -9,6 +9,16 @@ function simulate(experiment, magnification, well, keepDistancesString, descript
         keepDistances = false;
     else
         error('Invalid choice for keepDistancesString')
+    end
+    
+    fieldSize = str2double(fieldSize);
+    
+    if strcmp(magnification, '10x')
+        scale = 873.96 / fieldSize; % 873.96 is field size for 10x in CX7
+    elseif strcmp(magnification, '20x')
+        scale = 441.41 / fieldSize; % 441.41 is field size for 10x in CX7
+    else
+        error('Invalid choice for magnification')
     end
 
     %% ------------------------------START CODE--------------------------------
@@ -25,7 +35,8 @@ function simulate(experiment, magnification, well, keepDistancesString, descript
     end
 
     if ~isfield(allData, well)
-        allData = update_all_data(allData, well, well_folder, T);
+        allData = update_all_data(allData, well, well_folder, T, scale);
+        allData = add_distributions_to_all_data(allData, well);
     end
     disp('All data loaded.')
 
@@ -119,54 +130,17 @@ end
 
 %% ------------------------------FUNCTIONS---------------------------------
 
-function allData = update_all_data(allData, well, well_folder, T)
+function allData = add_distributions_to_all_data(allData, well)
 
-    row = find( strcmp(T.well, well) );
-    diameter = T.diameter(row);
-    scale = 6300 / diameter; % (um / pixel)
-    
-    allData.(well).diameter = diameter * scale;
-    allData.(well).xc = T.xc(row) * scale;
-    allData.(well).yc = T.yc(row) * scale;
-
-    [G, xNodes, yNodes] = load_graph(well_folder);
-    allData.(well).G = G;
-    allData.(well).xNodes = xNodes * scale;
-    allData.(well).yNodes = yNodes * scale;
-    
+    G = allData.(well).G;
+    xNodes = allData.(well).xNodes;
+    yNodes = allData.(well).yNodes;
     [distances, existingEdgeLength] = distances_distributions(G, xNodes, yNodes);
     [pd_dist, pd_edgeLength, density] = find_probability_distributions(G, distances, existingEdgeLength);
     allData.(well).pd_dist = pd_dist;
     allData.(well).pd_edgeLength = pd_edgeLength;
     allData.(well).density = density;
     
-end
-
-function [G, xNodes, yNodes] = load_graph(well_folder)
-
-    % This function reads the .csv files created by fiji and converts the 
-    % information into a ML graph structure.
-    
-    % Read csv files with edges & node positions
-    tic
-    edges = csvread(fullfile(well_folder,'edges.csv'));
-    nuclei_com = csvread(fullfile(well_folder,'nuclei_com.csv'));
-    numNodes = size(nuclei_com,1);
-    
-    % Node positions
-    xNodes = nuclei_com(:,2);
-    yNodes = nuclei_com(:,3);
-
-    % Initialize graph
-    G = graph();
-    G = addnode(G, numNodes);
-
-    % Add all edges in a for-loop
-    for i = 1:size(edges,1)
-        node1 = int64(edges(i,1));
-        node2 = int64(edges(i,2));
-        G = addedge(G, node1, node2);
-    end
 end
 
 function density = calculate_density(G)
