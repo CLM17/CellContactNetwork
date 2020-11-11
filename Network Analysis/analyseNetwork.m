@@ -18,14 +18,11 @@ close all
 %   (2) plotting = 'scatterplot' --> the output will be scatter plots
 %       with one datapoint per group.
 
-% Hello I am making changes!!!
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 experiment = 'WKS023';
 magnification = '10x';
 well = 'all';
 plotting = 'barplot';
-disp(experiment)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Define groups
