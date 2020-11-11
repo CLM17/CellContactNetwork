@@ -113,7 +113,7 @@ function simulate(experiment, magnification, well, keepDistancesString, descript
     GSim = graph(edges);
     
     fname = fullfile(well_folder, [well,'_simulatedGraph_',description,'.mat']);
-    save(fname, 'G', 'xNodes', 'yNodes', 'GSim', 'xSim', 'ySim', 'pDist', 'pEdgelength', 'pConnect', 'smallDistances')
+    save(fname, 'G', 'xNodes', 'yNodes', 'GSim', 'xSim', 'ySim', 'pDist', 'pEdgelength', 'pConnect', 'smallDistances', 'description')
     disp('Output saved.')
 end
 
@@ -193,5 +193,5 @@ function [pd_dist, pd_edgeLength, density] = find_probability_distributions(G, d
 
     density = calculate_density(G);
     disp(['Density is ', num2str(density)]);
-    
 end
+
