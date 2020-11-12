@@ -37,8 +37,10 @@ function allData = update_all_data(allData, well, well_folder, T, scale)
     row = find( strcmp(T.well, well) );
     
     allData.(well).diameter = T.diameter(row) * scale;
-    allData.(well).xc = T.xc(row) * scale;
-    allData.(well).yc = T.yc(row) * scale;
+    xc = T.xc(row);
+    yc = T.yc(row);
+    allData.(well).xc = xc * scale;
+    allData.(well).yc = yc * scale;
 
     [G, xNodes, yNodes] = load_graph(well_folder);
     allData.(well).G = G;

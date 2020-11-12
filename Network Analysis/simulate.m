@@ -1,12 +1,12 @@
-function simulate(experiment, magnification, well, fieldSize, keepDistancesString, description)
+function simulate(experiment, magnification, well, fieldSize, keepPositionsString, description)
     
     root = fullfile('..','..','Experiments', experiment, magnification);
     cutoffDistance = 250; % cutoff in micron
     
-    if strcmp(keepDistancesString, 'true')
-        keepDistances = true;
-    elseif strcmp(keepDistancesString, 'false')
-        keepDistances = false;
+    if strcmp(keepPositionsString, 'true')
+        keepPositions = true;
+    elseif strcmp(keepPositionsString, 'false')
+        keepPositions = false;
     else
         error('Invalid choice for keepDistancesString')
     end
@@ -40,15 +40,15 @@ function simulate(experiment, magnification, well, fieldSize, keepDistancesStrin
     end
     disp('All data loaded.')
 
-    % Get data of current well
-    G = allData.(well).G;
-    xNodes = allData.(well).xNodes;
-    yNodes = allData.(well).yNodes;
-
     % well locations
     xc = allData.(well).xc;
     yc = allData.(well).yc;
     diameter = allData.(well).diameter;
+    
+    % Get data of current well
+    G = allData.(well).G;
+    xNodes = allData.(well).xNodes - xc; % set center of well to x=0
+    yNodes = yc - allData.(well).yNodes; % set center of well to y=0
 
     % pdf
     pd_dist = allData.(well).pd_dist;
@@ -60,7 +60,7 @@ function simulate(experiment, magnification, well, fieldSize, keepDistancesStrin
     
     nNodes = numnodes(G);
     
-    if keepDistances
+    if keepPositions
         
         xSim = xNodes;
         ySim = yNodes;
@@ -68,8 +68,8 @@ function simulate(experiment, magnification, well, fieldSize, keepDistancesStrin
     else
         
         % Experimental radial and angular distributions
-        r = sqrt( (xNodes - xc).^2 + (yNodes - yc).^2 );
-        theta = atan2((yc - yNodes), (xNodes - xc));
+        r = sqrt( xNodes.^2 + yNodes.^2 );
+        theta = atan2(yNodes, xNodes);
 
         % Fit a kernel and truncate
         pdf_r = fitdist(r,'kernel');
@@ -87,7 +87,7 @@ function simulate(experiment, magnification, well, fieldSize, keepDistancesStrin
     end
 
     % Calculate simulated distances
-    [X,Y] = meshgrid(xSim,ySim);
+    [X,Y] = meshgrid(xSim, ySim);
     distances = sqrt( (X-X').^2 + (Y-Y').^2);
 
     % Extract the distances smaller than the cutoff distance, with the

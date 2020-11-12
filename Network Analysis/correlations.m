@@ -1,10 +1,10 @@
 experiment = 'WKS024';
 magnification = '10x';
-well = 'D03';
+well = 'B03';
 
 %% ------------------------------START CODE--------------------------------
 
-root = fullfile('..','Experiments', experiment, magnification);
+root = fullfile('..','..','Experiments', experiment, magnification);
 well_folder = fullfile(root, well);
 
 % Load image and graph if this wasn't done already
@@ -35,7 +35,6 @@ diameter = allData.(well).diameter;
 
 %%
 %measurementNames = Area	Mode	BX	BY	Width	Height	Major	Minor	Angle	Circ.	AR	Round	Solidity
-%cellMeasurements = csvread(fullfile(well_folder,'cell_measurements.csv'), 1);
 cellMeasurementsTable = readtable(fullfile(well_folder,'cell_measurements.csv'));
 
 measurementNames = {'area', 'circularity', 'longness'};
@@ -54,7 +53,7 @@ Centralities = struct();
 centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
 nC = length(centralityNames);
 
-%% Vector dimensions don't agree: please have a look at this later!!
+%% Remove nuclei that do not overlap with a cell (i.e. they have no cell measure)
 for i = 1:nC
     cName = centralityNames{i};
     c = centrality(G, cName);
@@ -62,17 +61,12 @@ for i = 1:nC
         if ~any( ismember(cellValues, j) )
             c(j) = [];
         end
-    end
-        
+    end   
     Centralities.(well).(cName) = c;
 end
 
 %% Plot cell measures versus centralities
 figure()
-area = Measurements.(well).area;
-circularity = Measurements.(well).circularity;
-longness = Measurements.(well).longness;
-
 count = 0;
 for i = 1:nM
     
