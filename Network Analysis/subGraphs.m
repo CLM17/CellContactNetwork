@@ -1,11 +1,11 @@
 experiment = 'WKS024';
 magnification = '10x';
-well = 'C03';
+well = 'B02';
 unit = 'pixels';
 fieldSize = 1104;           % Size of 1 field.
 
 loadImage = true;           % Set to true if you want to display an image
-N = 5;                      % Number of nodes in subgraph you want to display on the image.
+N = 3;                      % Number of nodes in subgraph you want to display on the image.
 
 nodeSize = 3;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
@@ -21,7 +21,7 @@ if ~isfolder(outputFolder)
     disp('Created new output folder for this well.')
 end
 
-root = fullfile('..','..','Experiments', experiment, magnification);
+root = fullfile('Experiments', experiment, magnification);
 well_folder = fullfile(root, well);
 
 % Load image and graph if this wasn't done already
@@ -96,12 +96,12 @@ ylabel('Number of subgraphs')
 xlabel('Size of subraph')
 
 c = 0;
-for i = 3:5
+for n = 3:5
     c = c + 1;
     subplot(2,3,3+c)
-    GSub = subgraph(G, count == i);
+    GSub = subgraph(G, count == n);
     plot(GSub, 'NodeLabel',{})
-    title(['n = ', num2str(i)])
+    title(['n = ', num2str(n)])
 end
 
 set(gcf,'PaperOrientation','landscape');
@@ -124,8 +124,8 @@ for i = 1:length(nArray)
 end
 
 for i = 1:length(nArray)
-    N = nArray(i);
-    GSub = subgraph(G, count == N);
+    n = nArray(i);
+    GSub = subgraph(G, count == n);
     subsubgraphs = conncomp(GSub);
     for j = 1:max(subsubgraphs)
         GSubSub = subgraph(GSub, subsubgraphs == j);
