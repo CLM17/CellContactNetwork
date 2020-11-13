@@ -7,7 +7,7 @@ Created on Tue Oct 13 11:25:23 2020
 """
 import numpy as np
 import os
-from skimage import io, img_as_uint
+from skimage import io, img_as_ubyte
     
 def get_tile_dimensions (tile_folder, file_list):
     
@@ -57,4 +57,4 @@ def paste_tiles(root, well, w):
                 yc = 0
                 xc = xc + 1
     
-    return img_as_uint(fused)
+    return img_as_ubyte(fused)

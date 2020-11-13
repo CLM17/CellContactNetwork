@@ -1,8 +1,11 @@
 experiment = 'WKS024';
 magnification = '10x';
-well = 'D05';
+well = 'C03';
 unit = 'pixels';
-loadImage = false;
+fieldSize = 1104;           % Size of 1 field.
+
+loadImage = true;           % Set to true if you want to display an image
+N = 5;                      % Number of nodes in subgraph you want to display on the image.
 
 nodeSize = 3;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
@@ -18,7 +21,7 @@ if ~isfolder(outputFolder)
     disp('Created new output folder for this well.')
 end
 
-root = fullfile('..','Experiments', experiment, magnification);
+root = fullfile('..','..','Experiments', experiment, magnification);
 well_folder = fullfile(root, well);
 
 % Load image and graph if this wasn't done already
@@ -28,12 +31,21 @@ if ~exist('T','var')
     T = readtable(xlsfileName);
 end
 
+
 if ~exist('allData','var')
     allData = struct;
 end
 
+scale = 1; % do not convert sizes to um.
 if ~isfield(allData, well)
-    allData = update_all_data(allData, well, well_folder, T, unit, loadImage);
+    allData = update_all_data(allData, well, well_folder, T, scale);
+    
+    if (loadImage)
+        disp(['Loading the image of well ',well,'...'])
+        [fused, cmap] = imread(fullfile(well_folder,[well,'_fused_RGB.tif']));
+        allData.(well).fused = fused;
+        allData.(well).cmap = cmap;
+    end
 end
 disp('All data loaded.')
 
@@ -52,6 +64,7 @@ if loadImage
     fused = allData.(well).fused;
     cmap = allData.(well).cmap;
 end
+
 %% 
 subgraphs = conncomp(G);
 nSubGraphs = length(subgraphs);
@@ -92,9 +105,9 @@ for i = 3:5
 end
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 20 12])
+set(gcf,'Color','w','Units','inches','Position',[1 1 10 6])
 figName = fullfile(outputFolder,[experiment, '_', magnification '_subGraphs.png']);
-saveas(gcf, figName)
+%saveas(gcf, figName)
 
 %% Plot
 % Draw graph as network & save the file
@@ -135,7 +148,6 @@ end
 %% Plot subgraph
 if loadImage
 
-    N = 5;
     GSub = subgraph(G, count == N);
 
     figure()
@@ -154,66 +166,6 @@ end
 
 %% ------------------------------FUNCTIONS---------------------------------
 
-function allData = update_all_data(allData, well, well_folder, T, unit, loadImage)
-
-    row = find( strcmp(T.well, well) );
-    diameter = T.diameter(row);
-    
-    if strcmp(unit, 'um')
-        scale = 6300 / diameter; % (um / pixel)
-    elseif strcmp(unit, 'pixels')
-        scale = 1;
-    else
-        error('Invalid unit. Please choose from "um" or "pixels".')
-    end
-    
-    disp(['Loading the graph of well ', well, '...'])
-    allData.(well).diameter = diameter * scale;
-    allData.(well).xc = T.xc(row) * scale;
-    allData.(well).yc = T.yc(row) * scale;
-
-    [G, xNodes, yNodes] = load_graph(well_folder);
-    allData.(well).G = G;
-    allData.(well).xNodes = xNodes * scale;
-    allData.(well).yNodes = yNodes * scale;
-    
-    if loadImage
-        disp(['Loading the image of well ',well,'...'])
-        [fused, cmap] = imread(fullfile(well_folder,[well,'_fused_RGB.tif']));
-        allData.(well).fused = fused;
-        allData.(well).cmap = cmap;
-    end
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [G, xNodes, yNodes] = load_graph(well_folder)
-
-    % This function reads the .csv files created by fiji and converts the 
-    % information into a ML graph structure.
-    
-    % Read csv files with edges & node positions
-    edges = csvread(fullfile(well_folder,'edges.csv'));
-    nuclei_com = csvread(fullfile(well_folder,'nuclei_com.csv'));
-    numNodes = size(nuclei_com,1);
-    
-    % Node positions
-    xNodes = nuclei_com(:,2);
-    yNodes = nuclei_com(:,3);
-
-    % Initialize graph
-    G = graph();
-    G = addnode(G, numNodes);
-
-    % Add all edges in a for-loop
-    for i = 1:size(edges,1)
-        node1 = int64(edges(i,1));
-        node2 = int64(edges(i,2));
-        G = addedge(G, node1, node2);
-    end
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function b = iscomplete(G)
     % number of edges is N(N-1)/2
     N = numnodes(G);

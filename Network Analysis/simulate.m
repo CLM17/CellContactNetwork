@@ -1,4 +1,4 @@
-function simulate(experiment, magnification, well, fieldSize, keepPositionsString, description)
+function simulate(experiment, magnification, well, fieldSizeString, keepPositionsString, description)
     
     root = fullfile('..','..','Experiments', experiment, magnification);
     cutoffDistance = 250; % cutoff in micron
@@ -11,15 +11,7 @@ function simulate(experiment, magnification, well, fieldSize, keepPositionsStrin
         error('Invalid choice for keepDistancesString')
     end
     
-    fieldSize = str2double(fieldSize);
-    
-    if strcmp(magnification, '10x')
-        scale = 873.96 / fieldSize; % 873.96 is field size for 10x in CX7
-    elseif strcmp(magnification, '20x')
-        scale = 441.41 / fieldSize; % 441.41 is field size for 10x in CX7
-    else
-        error('Invalid choice for magnification')
-    end
+    fieldSize = str2double(fieldSizeString);
 
     %% ------------------------------START CODE--------------------------------
 
@@ -35,6 +27,7 @@ function simulate(experiment, magnification, well, fieldSize, keepPositionsStrin
     end
 
     if ~isfield(allData, well)
+        scale = calculate_scale(magnification, fieldSize);
         allData = update_all_data(allData, well, well_folder, T, scale);
         allData = add_distributions_to_all_data(allData, well);
     end

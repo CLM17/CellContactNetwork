@@ -1,6 +1,7 @@
 experiment = 'WKS024';
 magnification = '10x';
 well = 'B03';
+fieldSize = 1104;
 
 %% ------------------------------START CODE--------------------------------
 
@@ -19,7 +20,8 @@ if ~exist('allData','var')
 end
 
 if ~isfield(allData, well)
-    allData = update_all_data(allData, well, well_folder, T);
+    scale = calculate_scale(magnification, fieldSize);
+    allData = update_all_data(allData, well, well_folder, T, scale);
 end
 disp('All data loaded.')
 
@@ -44,7 +46,7 @@ cellValues = cellMeasurementsTable.Mode;
 [~,ind] = sort(cellValues);
 
 Measurements = struct();
-Measurements.(well).('area') = cellMeasurementsTable.Area(ind);
+Measurements.(well).('area') = cellMeasurementsTable.Area(ind) * scale^2;
 Measurements.(well).('circularity') = cellMeasurementsTable.Circ_(ind);
 Measurements.(well).('longness') = cellMeasurementsTable.Major(ind) ./ cellMeasurementsTable.Minor(ind);
 
@@ -94,7 +96,7 @@ for i = 1:nM
 end
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 15 9])
+set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
 figName = fullfile('Figures/Correlations/',[experiment, '_', magnification, '_', well,'_measurementCorrelations.png']);
 saveas(gcf, figName)
 
@@ -126,52 +128,6 @@ for i = 1:nC
 end
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 15 12])
+set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
 figName = fullfile('Figures/Correlations/',[experiment, '_', magnification, '_', well,'_centralityCorrelations.png']);
 saveas(gcf, figName)
-
-%% ------------------------------FUNCTIONS---------------------------------
-
-function allData = update_all_data(allData, well, well_folder, T)
-
-    row = find( strcmp(T.well, well) );
-    diameter = T.diameter(row);
-    scale = 6300 / diameter; % (um / pixel)
-    
-    allData.(well).diameter = diameter * scale;
-    allData.(well).xc = T.xc(row) * scale;
-    allData.(well).yc = T.yc(row) * scale;
-
-    [G, xNodes, yNodes] = load_graph(well_folder);
-    allData.(well).G = G;
-    allData.(well).xNodes = xNodes * scale;
-    allData.(well).yNodes = yNodes * scale;
-    
-end
-
-function [G, xNodes, yNodes] = load_graph(well_folder)
-
-    % This function reads the .csv files created by fiji and converts the 
-    % information into a ML graph structure.
-    
-    % Read csv files with edges & node positions
-    tic
-    edges = csvread(fullfile(well_folder,'edges.csv'));
-    nuclei_com = csvread(fullfile(well_folder,'nuclei_com.csv'));
-    numNodes = size(nuclei_com,1);
-    
-    % Node positions
-    xNodes = nuclei_com(:,2);
-    yNodes = nuclei_com(:,3);
-
-    % Initialize graph
-    G = graph();
-    G = addnode(G, numNodes);
-
-    % Add all edges in a for-loop
-    for i = 1:size(edges,1)
-        node1 = int64(edges(i,1));
-        node2 = int64(edges(i,2));
-        G = addedge(G, node1, node2);
-    end
-end

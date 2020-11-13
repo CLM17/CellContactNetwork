@@ -15,18 +15,18 @@ from skimage import io
 from Helpers.brute_force_stitch_helpers import paste_tiles
 
 
-root = 'M:/tnw/bn/dm/Shared/Lukas/BEP/Experiments/WKS025/10x'
-well = 'D03'
+root = 'M:/tnw/bn/dm/Shared/Lukas/BEP/Experiments/WKS026/10x'
+well = 'C04'
 w = 8
 
-fused = paste_tiles(root, well, w)
-
 output_path = os.path.join(root, well, well+'_fused.tif')
-
 if os.path.isfile(output_path):
     a = input(well + "_fused.tif already exists. Do you want to overwite? (y/n)")
     if a != "y":
         raise ValueError("User terminated the script. Fused image is not saved.")
+
+
+fused = paste_tiles(root, well, w)
 
 print('Saving the fused image...')
 io.imsave(output_path, fused)

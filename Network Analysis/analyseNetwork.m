@@ -18,15 +18,15 @@ close all
 %   (2) plotting = 'scatterplot' --> the output will be scatter plots
 %       with one datapoint per group.
 
-% Hello hello I am making a change!!
-% This is my second change!!
+%   // fieldSize: double
+%   Size of 1 field (is used to calculate the scale in um/pixel).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-experiment = 'WKS023';
+experiment = 'WKS024';
 magnification = '10x';
-well = 'all';
+well = 'C02';
 plotting = 'barplot';
-disp(experiment)
+fieldSize = 1104;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Define groups
@@ -46,10 +46,8 @@ end
 groups = struct();
 if strcmp(experiment, 'WKS024')
     
-    root = '../Experiments/WKS024/10x';
-    
-    %wellArray = {'B02', 'B03', 'B04', 'B05', 'B06', 'B07'};
-    
+    root = 'Experiments/WKS024/10x';
+        
     groups(1).('Description') = '1';
     groups(1).('Wells') = {'B02', 'C02', 'D02'};
     groups(2).('Description') = '2';
@@ -65,11 +63,8 @@ if strcmp(experiment, 'WKS024')
     
 elseif strcmp(experiment, 'WKS023')
     
-    root = '../Experiments/WKS023/2020-09-09';
-    
-    %wellArray = {'B03', 'B04', 'B05', ...
-    %             'D03', 'D04', 'D05'};
-             
+    root = '/Experiments/WKS023/2020-09-09';
+                 
     groups(1).('Description') = 'Coating';
     groups(1).('Wells') = {'B03', 'B04', 'B05'};
     groups(2).('Description') = 'No coating';
@@ -77,12 +72,23 @@ elseif strcmp(experiment, 'WKS023')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Calculate scale in um/pixels
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if strcmp(magnification, '10x')
+    scale = 873.96 / fieldSize; % 873.96 is field size for 10x in CX7
+elseif strcmp(magnification, '20x')
+    scale = 441.41 / fieldSize; % 441.41 is field size for 20x in CX7
+else
+    error('Invalid choice for magnification')
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Load xlsx file with well locations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+well_folder = fullfile(root, well);
 % Load image and graph if this wasn't done already
 if ~exist('T','var')
-    well_folder = fullfile(root, well);
     xlsfileName = fullfile(root, 'Well locations.xlsx');
     T = readtable(xlsfileName);
 end
@@ -99,20 +105,20 @@ if ~strcmp(well, 'all')
     
     % Load data for this well (if it wasn't done already)
     if ~isfield(allData, well)
-        allData = update_all_data(allData, well, well_folder, T);
+        allData = update_all_data(allData, well, well_folder, T, scale);
     end
     disp('All data loaded.')
-
-    % Get data of current well
-    G = allData.(well).G;
-    xNodes = allData.(well).xNodes;
-    yNodes = allData.(well).yNodes;
 
     % well locations
     xc = allData.(well).xc;
     yc = allData.(well).yc;
     diameter = allData.(well).diameter;
     
+    % Get data of current well
+    G = allData.(well).G;
+    xNodes = allData.(well).xNodes - xc; % set center of well to x=0
+    yNodes = yc - allData.(well).yNodes; % set center of well to y=0
+
     %% Centrality measures
     
     % Calculate centralities
@@ -120,7 +126,7 @@ if ~strcmp(well, 'all')
     centralityNames = {'R','degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
     nC = length(centralityNames);
     
-    Centralities.(well).('R') = sqrt( (xNodes - xc).^2 + (yNodes - yc).^2 );
+    Centralities.(well).('R') = sqrt( xNodes.^2 + yNodes.^2 );
     
     for i = 2:nC
         cName = centralityNames{i};
@@ -161,8 +167,8 @@ if ~strcmp(well, 'all')
     set(gcf,'PaperOrientation','landscape');
     set(gcf,'Color','w','Units','inches','Position',[1 1 18 7.5])
     figName = fullfile('Figures/AnalyzeWells/',[experiment, '_',magnification, '_', well,'_centralities.png']);
-    saveas(gcf, figName)
-    disp('Centralities saved')
+    %saveas(gcf, figName)
+    %disp('Centralities saved')
 
     % Calculate distributions of distances
     [X,Y] = meshgrid(xNodes, yNodes);
@@ -185,7 +191,7 @@ if ~strcmp(well, 'all')
     set(gcf,'PaperOrientation','landscape');
     set(gcf,'Color','w','Units','inches','Position',[1 1 8 4])
     figName = fullfile('Figures/AnalyzeWells/',[experiment, '_',magnification, '_', well,'_distanceDistributions.png']);
-    saveas(gcf, figName)
+    %saveas(gcf, figName)
 
 end
 
@@ -217,23 +223,23 @@ if strcmp(well, 'all')
 
             % Load data for this well (if it wasn't done already)
             if ~isfield(allData, well)
-                allData = update_all_data(allData, well, well_folder, T);
+                allData = update_all_data(allData, well, well_folder, T, scale);
             end
             disp(['Data loaded for well ', well])
 
-            % Get data of current well
-            G = allData.(well).G;
-            xNodes = allData.(well).xNodes;
-            yNodes = allData.(well).yNodes;
-
-            % well locations
+           % well locations
             xc = allData.(well).xc;
             yc = allData.(well).yc;
             diameter = allData.(well).diameter;
+            
+          	% Get data of current well
+            G = allData.(well).G;
+            xNodes = allData.(well).xNodes - xc; % set center of well to x=0
+            yNodes = yc - allData.(well).yNodes; % set center of well to y=0
 
             numNodes = numnodes(G);
 
-            r = sqrt( (xNodes - xc).^2 + (yNodes - yc).^2 );
+            r = sqrt( (xNodes).^2 + (yNodes).^2 );
 
             % calculate density
             density(j) = calculate_density(G);
@@ -313,7 +319,7 @@ if strcmp(well, 'all')
         set(gcf,'PaperOrientation','landscape');
         set(gcf,'Color','w','Units','inches','Position',[1 1 12 4])
         figName = fullfile('Figures/AnalyzeGroups/',[experiment, '_', magnification, '_barplotGroups.pdf']);
-        saveas(gcf, figName)        
+        %saveas(gcf, figName)        
 
     end
 
@@ -359,7 +365,7 @@ if strcmp(well, 'all')
         set(gcf,'PaperOrientation','landscape');
         set(gcf,'Color','w','Units','inches','Position',[1 1 12 6])
         figName = fullfile('Figures/AnalyzeGroups/',[experiment, '_', magnification '_scatterplotGroups.pdf']);
-        saveas(gcf, figName)
+        %saveas(gcf, figName)
         
         %% plot one figure with most important measure
         figure()
@@ -398,7 +404,7 @@ if strcmp(well, 'all')
         set(gcf,'PaperOrientation','landscape');
         set(gcf,'Color','w','Units','inches','Position',[1 1 6 4])
         figName = fullfile('Figures/AnalyzeGroups/',[experiment, '_', magnification '_meanDegreeGroups.pdf']);
-        saveas(gcf, figName)
+        %saveas(gcf, figName)
         
     end % if plotting = 'scatterplot'
     
@@ -420,53 +426,6 @@ function d = shortest_path_lengths(G)
     d = distances(G);
     maxD = max(d(d~=inf));
     d(d==inf) = maxD + 1;
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function allData = update_all_data(allData, well, well_folder, T)
-
-    row = find( strcmp(T.well, well) );
-    diameter = T.diameter(row);
-    scale = 6300 / diameter; % (um / pixel)
-    
-    allData.(well).diameter = diameter * scale;
-    allData.(well).xc = T.xc(row) * scale;
-    allData.(well).yc = T.yc(row) * scale;
-
-    [G, xNodes, yNodes] = load_graph(well_folder);
-    allData.(well).G = G;
-    allData.(well).xNodes = xNodes * scale;
-    allData.(well).yNodes = yNodes * scale;
-    
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [G, xNodes, yNodes] = load_graph(well_folder)
-
-    % This function reads the .csv files created by fiji and converts the 
-    % information into a ML graph structure.
-    
-    % Read csv files with edges & node positions
-    edges = csvread(fullfile(well_folder,'edges.csv'));
-    nuclei_com = csvread(fullfile(well_folder,'nuclei_com.csv'));
-    numNodes = size(nuclei_com,1);
-    
-    % Node positions
-    xNodes = nuclei_com(:,2);
-    yNodes = nuclei_com(:,3);
-
-    % Initialize graph
-    G = graph();
-    G = addnode(G, numNodes);
-
-    % Add all edges in a for-loop
-    for i = 1:size(edges,1)
-        node1 = int64(edges(i,1));
-        node2 = int64(edges(i,2));
-        G = addedge(G, node1, node2);
-    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
