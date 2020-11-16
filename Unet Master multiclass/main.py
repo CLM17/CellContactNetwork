@@ -20,7 +20,7 @@ epochs = 300
 batch_size = 2
 num_test_image = 1
 
-myGene = trainGenerator(batch_size,train_folder,'image','label',data_gen_args,save_to_dir = False)
+myGene = trainGenerator(batch_size,train_folder,'image','label',data_gen_args, flag_multi_class = True, num_class = 3, save_to_dir = False)
 
 #model = unet(pretrained_weights='unet_membrane.hdf5') #uncomment to use pretrained weights
 model = unet()

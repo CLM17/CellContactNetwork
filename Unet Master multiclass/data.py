@@ -19,10 +19,13 @@ Pedestrian = [64,64,0]
 Bicyclist = [0,128,192]
 Unlabelled = [0,0,0]
 
+CellBody = [255,0,0]
+Filopodia = [0,255,0]
+TunnelingTube = [0,0,255]
 
-COLOR_DICT = np.array([Sky, Building, Pole, Road, Pavement,
-                          Tree, SignSymbol, Fence, Car, Pedestrian, Bicyclist, Unlabelled])
-
+#COLOR_DICT = np.array([Sky, Building, Pole, Road, Pavement,
+#                          Tree, SignSymbol, Fence, Car, Pedestrian, Bicyclist, Unlabelled])
+COLOR_DICT = np.array([CellBody, Filopodia, TunnelingTube])
 
 def adjustData(img,mask,flag_multi_class,num_class):
     if(flag_multi_class):
