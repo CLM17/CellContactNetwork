@@ -1,7 +1,8 @@
+close all
+
 experiment = 'WKS024';
 magnification = '10x';
-well = 'B02';
-unit = 'pixels';
+well = 'D05';
 fieldSize = 1104;           % Size of 1 field.
 
 loadImage = true;           % Set to true if you want to display an image
@@ -21,7 +22,7 @@ if ~isfolder(outputFolder)
     disp('Created new output folder for this well.')
 end
 
-root = fullfile('Experiments', experiment, magnification);
+root = fullfile('..','..','Experiments', experiment, magnification);
 well_folder = fullfile(root, well);
 
 % Load image and graph if this wasn't done already
@@ -115,16 +116,18 @@ figName = fullfile(outputFolder,[experiment, '_', magnification '_subGraphs.png'
 % initialise
 families = struct();
 nArray = [3,4,5];
-for i = 1:length(nArray)
-    families(i).complete = 0;
-    families(i).cyclic = 0;
-    families(i).line = 0;
-    families(i).star = 0;
-    families(i).other = 0;
+for n = nArray
+    fieldName = ['N',num2str(n)];
+    families.(fieldName).complete = 0;
+    families.(fieldName).cyclic = 0;
+    families.(fieldName).line = 0;
+    families.(fieldName).star = 0;
+    families.(fieldName).other = 0;
 end
 
 for i = 1:length(nArray)
     n = nArray(i);
+    fieldName = ['N',num2str(n)];
     GSub = subgraph(G, count == n);
     subsubgraphs = conncomp(GSub);
     for j = 1:max(subsubgraphs)
@@ -135,17 +138,50 @@ for i = 1:length(nArray)
         line = isline(GSubSub);
         star = isstar(GSubSub);
         
-        families(i).complete = families(i).complete + complete;
-        families(i).cyclic = families(i).cyclic + cyclic;
-        families(i).line = families(i).line + line;
-        families(i).star = families(i).star + star;
+        families.(fieldName).complete = families.(fieldName).complete + complete;
+        families.(fieldName).cyclic = families.(fieldName).cyclic + cyclic;
+        families.(fieldName).line = families.(fieldName).line + line;
+        families.(fieldName).star = families.(fieldName).star + star;
         
         if (~complete && ~cyclic && ~line && ~star)
-            families(i).other = families(i).other + 1;
+            families.(fieldName).other = families.(fieldName).other + 1;
         end
     end
 end
+
+% Write output to csv
+outputFile = fullfile(outputFolder, 'subGraphs.csv');
+
+if isfile(outputFile)
+    prompt = 'subGraphs.csv already exists in well folder. Do you want to continue? (y/n)';
+    str = inputdlg(prompt,'WARNING');
+    if ~strcmp(str,'y')
+        error('User terminated operation');
+    end
+end
+
+[fid, msg] = fopen(outputFile, 'wt');
+
+if fid < 0
+  error('Could not open file "%s" because "%s"', fid, msg);
+end
+
+fprintf(fid, '\n');
+for n = nArray
+    fieldName = ['N',num2str(n)];
+    fprintf(fid, '%s:\n', fieldName);
+    fprintf(fid, '%s,%s\n', 'Complete', num2str(families.(fieldName).complete));
+    fprintf(fid, '%s,%s\n', 'Cyclic', num2str(families.(fieldName).cyclic));
+    fprintf(fid, '%s,%s\n', 'Line', num2str(families.(fieldName).line));
+    fprintf(fid, '%s,%s\n', 'Star', num2str(families.(fieldName).star));
+    fprintf(fid, '%s,%s\n', 'Other', num2str(families.(fieldName).other));
+    fprintf(fid, '\n');
+end
+fclose(fid);
+
+
 %% Plot subgraph
+N=3;
 if loadImage
 
     GSub = subgraph(G, count == N);
