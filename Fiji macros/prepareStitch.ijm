@@ -385,7 +385,7 @@ for (l = 0; l < well_list.length; l++) {
 	
 	// Loop over tiles in the grid
 	for (i = 0; i < w*w; i++) {
-		print("Well "+well+": Processing image "+d2s(i+1,0)+" out of "+d2s(w*w,0)+".");
+		print("Well "+well+": Processing tile "+d2s(i+1,0)+" out of "+d2s(w*w,0)+".");
 	
 		// Give the image the correct tile number.
 		// This number is based on the column grid.
@@ -400,6 +400,7 @@ for (l = 0; l < well_list.length; l++) {
 		ch_counts = newArray(nr_channels);
 	
 		threshold_counter = 0;
+		ch_th_string = "";
 		
 		// Loop over the channels in the image
 		for (ch = 0; ch < nr_channels; ch++){
@@ -420,20 +421,29 @@ for (l = 0; l < well_list.length; l++) {
 			if (ch_subtract_background[ch] == true){
 				run("Subtract Background...", "rolling="+d2s(rolling_ball_radius,0)+" disable");
 			}
+
 			if (ch_threshold[ch] == true){
+				// Specify channel string name for merging threshold channels
+				ch_th_string = ch_th_string + "c" + d2s(threshold_counter+1,0) + "=th_" + d2s(threshold_counter+1,0) + " ";
 				th_method = threshold_method_list[threshold_counter];
 				run("Duplicate...", " ");
+				rename("th_" + d2s(threshold_counter+1,0));
 				setAutoThreshold(th_method + " dark");
 				setOption("BlackBackground", true);
 				run("Convert to Mask");
 				ch_name = ch_names_split[ch];
-				save(threshold_folder + "/" + tile_name + "_th_" + ch_name + ".tif");
-				close();
 				threshold_counter = threshold_counter + 1;
 			}
-	
 		}
-	
+
+		// Merge the thresholded images
+		run("Merge Channels...", ch_th_string + "create");
+		save(threshold_folder + "/" + tile_name + ".tif");
+		// Close the thresholded images
+		for (t = 0; t < threshold_counter; t++) {
+			close("th_" + d2s(t+1,0));
+		}
+
 		// Find the right color for right channel (reverse order)
 		channel_string = "";
 		for (ch = 0; ch < nr_channels; ch++){
@@ -456,4 +466,4 @@ for (l = 0; l < well_list.length; l++) {
 	print("Finished the preparation, you can now start stitching well "+well+".");
 
 }
-print("Prepared all wells.")
+print("Prepared all wells.");

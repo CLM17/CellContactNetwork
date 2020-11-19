@@ -123,7 +123,9 @@ print("Converting to 8-bit RGB and saving it as seperate tif tile...");
 run("RGB Color");
 saveAs(root+"/"+well+"/"+well+"_fused_RGB.tif");
 close();
-setBatchMode(false);if (M==10){
+setBatchMode(false);
+
+if (M==10){
 	selem = 4;
 	dynamic = 2;
 	print("Magnification 10x");
