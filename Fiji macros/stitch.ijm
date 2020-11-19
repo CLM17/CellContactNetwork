@@ -16,6 +16,7 @@
 #@ String (label="Width/height of fused image") w
 #@ String (label="Overlap (%)") overlap
 #@ String (label="How many bits?") bits
+#@ boolean (label="Brute-force stitch? (not recommended)") brute_force
 //#@ String (label="Number of color channels") c
 
 close("*");
@@ -52,17 +53,87 @@ if (slices > channels){
 		save(fname);
 		close();
 		}
+	channels = slices;
 }
 
 // Do grid stitching
 print("Starting the stitching...");
-setBatchMode(false);
-run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+w+" grid_size_y="+w+" tile_overlap="+overlap+" first_file_index_i=0 directory="+root+"/"+well+"/tiles file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
+
+// Normal stitching
+if (!(brute_force)){
+	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+w+" grid_size_y="+w+" tile_overlap="+overlap+" first_file_index_i=0 directory="+root+"/"+well+"/tiles file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
+}
+
+// Brute-force stitching, only if normal stitching does not work
+else if (brute_force){
+
+	channel_string = "";
+	for (ch = 0; ch < channels; ch++) {
+
+		// Make an image for this channel
+		fused_name = well+"_fused_" + d2s(ch+1,0);
+		channel_string = channel_string + "c" + d2s(ch+1,0) + "=" + fused_name + " ";
+		newImage(fused_name, "8-bit black", w*width, w*height, 1);
+	}
+
+	// Initialize tile positions on the grid
+	x = 0;
+	y = 0;
+
+	// Loop over tiles
+	for (i = 0; i < w*w; i++) {
+		if (i < 10) {
+			n = "0"+d2s(i,0);
+		}
+		else{
+			n = d2s(i,0);
+		}
+		print("Processing tile  "+n);
+		// open tile
+		fname = root+"/"+well+"/tiles/tile_"+n+".tif";
+		open(fname);
+		run("Split Channels");
+
+		// Loop over channels
+		for (ch = 0; ch < channels; ch++) {
+
+			fused_name = well+"_fused_" + d2s(ch+1,0);
+			ch_tile_prefix = "C"+d2s(ch+1,0)+"-tile_";
+			
+			// Loop through tile pixels
+			for (xi = 0; xi < width; xi++) {
+				
+				for (yi = 0; yi < height; yi++) {
+	
+					// Get pixel value in thresholded tile
+					selectWindow(ch_tile_prefix+n+".tif");
+					p = getPixel(xi, yi);
+	
+					// Put the pixel in the fused image
+					selectWindow(fused_name);
+					setPixel(x+xi, y+yi, p);
+		
+				}
+			}
+			close(ch_tile_prefix+n+".tif");
+		}
+
+		y = y + height;
+		if (y == w*height){
+			y = 0;
+			x = x + width;
+		}
+		
+	}
+	// Merge the channels
+	run("Merge Channels...", channel_string + "create");
+}
 
 // Convert to lower bount of bits
 print("Converting to "+bits+"-bit. Please wait for a message box.");
 run(bits+"-bit");
 
+setBatchMode("exit and display");
 // Let the user change the LUT
 title = "Set the right colors.";
 message = "Change the LUT of the channels to set the right colors.\nPress OK when you are done.";
@@ -72,4 +143,3 @@ waitForUser(title, message);
 print("Saving the result...");
 saveAs("Tiff", output_file);
 print("Fused image is saved, you can now close it.");
-

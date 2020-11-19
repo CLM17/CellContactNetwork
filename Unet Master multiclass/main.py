@@ -16,8 +16,8 @@ data_gen_args = dict(rotation_range=0.2,
 train_folder = 'data/pets/train'
 test_folder = "data/pets/test/image"
 steps_per_epoch = 1
-epochs = 100
-batch_size = 1
+epochs = 500
+batch_size = 2
 num_test_image = 10
 nb_classes = 3
 flag_multi_class = True
