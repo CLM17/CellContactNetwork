@@ -8,7 +8,7 @@ close all
 
 experiment = 'WKS024';
 magnification = '10x';
-well = 'C02';               % well name
+well = 'B02';               % well name
 plotCentrality = 'none';    % change to centrality name ('betweenness', 'closeness', etc) to plot centrality measures. If 'none', node colors are as specified below.
 nodeSize = 4;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
