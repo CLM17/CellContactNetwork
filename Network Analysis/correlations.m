@@ -1,6 +1,8 @@
+close all
+
 experiment = 'WKS024';
 magnification = '10x';
-well = 'B03';
+well = 'D06';
 fieldSize = 1104;
 
 %% ------------------------------START CODE--------------------------------
@@ -26,6 +28,7 @@ end
 disp('All data loaded.')
 
 % Get data of current well
+measurementNames = allData.measurementNames;
 G = allData.(well).G;
 xNodes = allData.(well).xNodes;
 yNodes = allData.(well).yNodes;
@@ -35,45 +38,26 @@ xc = allData.(well).xc;
 yc = allData.(well).yc;
 diameter = allData.(well).diameter;
 
-%%
-%measurementNames = Area	Mode	BX	BY	Width	Height	Major	Minor	Angle	Circ.	AR	Round	Solidity
-cellMeasurementsTable = readtable(fullfile(well_folder,'cell_measurements.csv'));
-
-measurementNames = {'area', 'circularity', 'longness'};
-nM = length(measurementNames);
-
-cellValues = cellMeasurementsTable.Mode;
-[~,ind] = sort(cellValues);
-
-Measurements = struct();
-Measurements.(well).('area') = cellMeasurementsTable.Area(ind) * scale^2;
-Measurements.(well).('circularity') = cellMeasurementsTable.Circ_(ind);
-Measurements.(well).('longness') = cellMeasurementsTable.Major(ind) ./ cellMeasurementsTable.Minor(ind);
-
 %% Calulcate centralities
 Centralities = struct();
 centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
 nC = length(centralityNames);
 
-%% Remove nuclei that do not overlap with a cell (i.e. they have no cell measure)
+%% Calculate centralities
 for i = 1:nC
     cName = centralityNames{i};
-    c = centrality(G, cName);
-    for j = 1:length(c)
-        if ~any( ismember(cellValues, j) )
-            c(j) = [];
-        end
-    end   
+    c = calculate_normalized_centrality(G, cName);
     Centralities.(well).(cName) = c;
 end
 
 %% Plot cell measures versus centralities
 figure()
 count = 0;
+nM = length(measurementNames);
 for i = 1:nM
     
     mName = measurementNames{i};
-    m = Measurements.(well).(mName);
+    m = allData.(well).(mName);
     
     for j = 1:nC
         count = count + 1;
@@ -91,6 +75,39 @@ for i = 1:nM
         plot(m, c, '.', m, b1 + b2*m, '-r')
         xlabel(mName)
         ylabel(cName)
+        title(['R^2 = ', num2str(R2)])
+    end
+end
+
+set(gcf,'PaperOrientation','landscape');
+set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
+figName = fullfile('Figures/Correlations/',[experiment, '_', magnification, '_', well,'_measurementCentralityCorrelations.png']);
+saveas(gcf, figName)
+
+%% Plot all measurements
+figure()
+count = 0;
+for i = 1:nM
+    
+    mName1 = measurementNames{i};
+    m1 = allData.(well).(mName1);
+    
+    for j = 1:nM
+        count = count + 1;
+        
+        mName2 = measurementNames{j};
+        m2 = allData.(well).(mName2);
+
+        % fit linear model c = b1 + b2*m
+        mdl = fitlm(m1, m2);
+        b1 = mdl.Coefficients.Estimate(1);
+        b2 = mdl.Coefficients.Estimate(2);
+        R2 = mdl.Rsquared.Ordinary;
+
+        subplot(nM, nM, count)
+        plot(m1, m2, '.', m1, b1 + b2*m1, '-r')
+        xlabel(mName1)
+        ylabel(mName2)
         title(['R^2 = ', num2str(R2)])
     end
 end

@@ -36,15 +36,32 @@ function allData = update_all_data(allData, well, well_folder, T, scale)
     
     row = find( strcmp(T.well, well) );
     
-    allData.(well).diameter = T.diameter(row) * scale;
-    xc = T.xc(row);
-    yc = T.yc(row);
+    allData.(well).diameter = str2double( T.diameter(row) ) * scale;
+    xc = str2double( T.xc(row) );
+    yc = str2double( T.yc(row) );
+
     allData.(well).xc = xc * scale;
     allData.(well).yc = yc * scale;
-
+    
     [G, xNodes, yNodes] = load_graph(well_folder);
+    
+    % Read cell measurements table
+    [Measurements, measurementNames, cellValues] = read_measurements_table(well_folder, scale);
+    % Remove the nodes that are not part of a cell
+    for i = 1:numnodes(G)
+         if ~any( ismember(cellValues, i) )
+            G = rmnode(G, i);
+            xNodes(i) = [];
+            yNodes(i) = [];
+         end
+    end
+
     allData.(well).G = G;
     allData.(well).xNodes = xNodes * scale;
     allData.(well).yNodes = yNodes * scale;
-    
+    allData.(well).area = Measurements.area;
+    allData.(well).circularity = Measurements.circularity;
+    allData.(well).longness = Measurements.longness;
+    allData.measurementNames = measurementNames;
+
 end

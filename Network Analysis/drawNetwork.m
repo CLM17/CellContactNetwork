@@ -9,7 +9,7 @@ close all
 experiment = 'WKS024';
 magnification = '10x';
 well = 'B02';               % well name
-plotCentrality = 'none';    % change to centrality name ('betweenness', 'closeness', etc) to plot centrality measures. If 'none', node colors are as specified below.
+nodeData = 'none';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
 nodeSize = 4;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
 lineWidth = 3;              % thickness of edges (= lines)
@@ -38,15 +38,10 @@ if ~isfield(allData, well)
     [fused, cmap] = imread(fullfile(well_folder,[well,'_fused_RGB.tif']));
     allData.(well).fused = fused;
     allData.(well).cmap = cmap;
-    G = allData.(well).G;
-end
-
-% Calculate centrality if the user asked for it
-if (~strcmp(plotCentrality,'none') && ~isfield(allData.(well), plotCentrality))
-    allData.(well).(plotCentrality) = centrality(G, plotCentrality);
 end
 
 % Get image and graph of current well
+measurementNames = allData.measurementNames;
 fused = allData.(well).fused;
 cmap = allData.(well).cmap;
 G = allData.(well).G;
@@ -56,6 +51,12 @@ n = numnodes(G);
 
 N = size(fused, 1);
 M = size(fused, 2);
+
+% Calculate centrality if the user asked for it
+centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
+if (ismember(nodeData,centralityNames) && ~isfield(allData.(well), nodeData))
+    allData.(well).(nodeData) = centrality(G, nodeData);
+end
 
 % Draw graph as network & save the file
 figure()
@@ -71,13 +72,44 @@ p = plot(G, 'XData', xNodes, 'YData', yNodes, ...
     'EdgeColor',edgeColor,...
     'EdgeAlpha',edgeTransparency);
 
-if ~strcmp(plotCentrality,'none')
-    rgb = vals2colormap(allData.(well).(plotCentrality));
+if ismember(nodeData, centralityNames) || ismember(nodeData, measurementNames)
+    rgb = vals2colormap(allData.(well).(nodeData));
     p.NodeColor = rgb;
 end
 
-%saveas(gcf, fullfile(well_folder,[well,'_network.tif']))
-%disp(['Image saved in ', well_folder,' directory.'])
+saveas(gcf, fullfile('Figures', 'FullNetworks',[well,'_network.tif']))
+
+%% Quality check
+
+nImgs = 5;
+imgSize = 512;
+% set seed
+rng(1);
+xPos = randi(N - imgSize, [1, nImgs]);
+yPos = randi(M - imgSize, [1, nImgs]);
+
+for i = 1:nImgs
+    x = xPos(i);
+    y = yPos(i);
+    img = fused(y:y+imgSize, x:x+imgSize, :);
+    
+    nodesInImg = (xNodes >= x & xNodes <= x+imgSize) & (yNodes >= y & yNodes <= y+imgSize);
+    subG = subgraph(G, nodesInImg);
+    
+    disp(['Img ', num2str(i),': N nodes = ', num2str(numnodes(subG)), ', N edges = ', num2str(numedges(subG)),'.'])
+    
+    figure()
+    imshow(img)
+    hold on
+
+    p = plot(subG, 'XData', xNodes(nodesInImg)-x, 'YData', yNodes(nodesInImg)-y, ...
+        'NodeColor', nodeColor,...
+        'MarkerSize',nodeSize,...
+        'NodeLabel',{},...
+        'LineWidth',lineWidth,...
+        'EdgeColor',edgeColor,...
+        'EdgeAlpha',edgeTransparency);
+end
 
 %% ------------------------------FUNCTIONS---------------------------------
 
