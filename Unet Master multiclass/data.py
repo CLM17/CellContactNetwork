@@ -128,8 +128,8 @@ def labelVisualize(num_class,color_dict,img):
 
 
 
-def saveResult(save_path,npyfile,flag_multi_class = False,num_class = 2):
+def saveResult(save_path,npyfile,target_size=(512,512),flag_multi_class = False,num_class = 2):
     for i,item in enumerate(npyfile):
-        item = item.reshape((512,512,num_class))
+        item = item.reshape((target_size[0],target_size[1],num_class))
         #img = labelVisualize(num_class,COLOR_DICT,item) if flag_multi_class else item[:,:,0]
         io.imsave(os.path.join(save_path,"%d_predict.tif"%i),item)

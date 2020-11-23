@@ -53,7 +53,7 @@ def unet(nb_classes = 1, pretrained_weights = None,input_size = (512,512,1)):
 
     # Make the output multi-class
     conv10 = Conv2D(nb_classes, 1, activation = 'softmax')(conv9)
-    outputimage = Reshape((512*512, nb_classes))(conv10)
+    outputimage = Reshape((input_size[0]*input_size[1], nb_classes))(conv10)
 
     model = Model(input = inputs, output = outputimage)
 
