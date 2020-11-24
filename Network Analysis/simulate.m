@@ -32,12 +32,11 @@ function simulate(experiment, magnification, well, fieldSizeString, keepPosition
         allData = add_distributions_to_all_data(allData, well);
     end
     disp('All data loaded.')
-
+    
     % well locations
     xc = allData.(well).xc;
     yc = allData.(well).yc;
-    diameter = allData.(well).diameter;
-    
+
     % Get data of current well
     G = allData.(well).G;
     xNodes = allData.(well).xNodes - xc; % set center of well to x=0
