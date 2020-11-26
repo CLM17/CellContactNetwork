@@ -142,9 +142,9 @@ for i = 1:nGroups
         meanD(j) = sum(distances,'all') * 2 / (numNodes*(numNodes-1));
 
         % Calculate centralities
-        dc = centrality(G, 'degree');
-        bc = centrality(G, 'betweenness');
-        cc = centrality(G, 'closeness');
+        dc = calculate_normalized_centrality(G, 'degree');
+        bc = calculate_normalized_centrality(G, 'betweenness');
+        cc = calculate_normalized_centrality(G, 'closeness');
 
         % Store parameters
         numCells(j) = numNodes;

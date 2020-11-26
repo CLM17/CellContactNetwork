@@ -13,7 +13,7 @@ numCols = 4;
 
 %% ------------------------------START CODE--------------------------------
 
-root = fullfile('..','..','Experiments', experiment, magnification);
+root = fullfile('..','..','Experiments', experiment, '10x old', magnification);
 
 % Load image and graph if this wasn't done already
 if ~exist('T','var')
@@ -84,3 +84,7 @@ for c = 1:numCols
 end
 
 xlim([-100,11000])
+set(gcf,'PaperOrientation','landscape');
+set(gcf,'Color','w','Units','inches','Position',[1 1 6 4])
+figName = fullfile('SubgraphAnalysis',[experiment, '_', magnification, '_subgraphResults.png']);
+saveas(gcf, figName) 

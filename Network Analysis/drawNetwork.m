@@ -6,10 +6,10 @@ close all
 
 %% --------------------------SPECIFY PARAMETERS----------------------------
 
-experiment = 'WKS024';
-magnification = '10x';
-well = 'B02';               % well name
-nodeData = 'none';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
+experiment = 'JJ005';
+magnification = '20x';
+well = 'B03';               % well name
+nodeData = 'none';          % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
 nodeSize = 4;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
 lineWidth = 3;              % thickness of edges (= lines)

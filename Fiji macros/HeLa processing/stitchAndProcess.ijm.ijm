@@ -101,10 +101,10 @@ function brute_force_stitch(tileFolder, w, width, height){
 setBatchMode(true);
 
 wellFolder = root + "/" + well;
-output_file = wellFolder + "/"+well+"_fused.tif";
+fusedFileName = wellFolder + "/"+well+"_fused.tif";
 
 // If the fused image already exists, ask the user if they want to overwrite:
-if (File.exists(output_file)){
+if (File.exists(fusedFileName)){
 	showMessageWithCancel("Fused image already exists!","A fused image of well "+well+" already exists.\nDo you want to continue and overwrite the old fused image?");
 }
 
@@ -143,7 +143,7 @@ print("Starting the stitching...");
 // Normal stitching
 if (!(brute_force)){
 	print("stitching...");
-	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+w+" grid_size_y="+w+" tile_overlap="+overlap+" first_file_index_i=0 directory="+tileFolder+" file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
+	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+w+" grid_size_y="+w+" tile_overlap="+overlap+" first_file_index_i=0 directory="+tileFolder+" file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 add_tiles_as_rois compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
 }
 
 // Brute-force stitching, only if normal stitching does not work
@@ -167,7 +167,7 @@ waitForUser(title, message);
 
 // Save raw fused result
 print("Saving the result...");
-saveAs("Tiff", output_file);
+saveAs("Tiff", fusedFileName);
 
 // Adjust brightness and contrast
 run("Brightness/Contrast...");
@@ -210,7 +210,7 @@ waitForUser(title2, message2);
 
 // Convert to 8-bit RGB
 setBatchMode(true);
-selectWindow(fname);
+selectWindow(well+"_fused.tif");
 print("Converting to 8-bit RGB and saving it as seperate tif tile...");
 run("RGB Color");
 
@@ -222,6 +222,7 @@ run("Clear Outside");
 // Save the RGB color. Will later be used by Matlab to draw the network on.
 saveAs(root+"/"+well+"/"+well+"_fused_RGB.tif");
 close();
+roiManager("deselect");
 setBatchMode("exit and display");
 
 // Stitch the thresholded images if the user wants to
@@ -233,8 +234,10 @@ if(stitch_th){
 	rename("threshold");
 	
 	// Clear outside of well of thresholded image
+	print("Clearing the outs"
 	roiManager("Select", 0);
 	run("Clear Outside");
+	
 	run("Select None");
 	roiManager("Deselect");
 	roiManager("Delete");

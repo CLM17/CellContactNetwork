@@ -1,24 +1,3 @@
-//-----------------------------------------------------------------------
-// PREPARE TILES FOR STITCHING
-// Created 30-10-2020 by Lukas van den Heuvel.
-
-// The CX7 high-content microscope arranges its images in a spiral,
-// and stores each color channel in a separate image.
-
-// This macro converts the filenames from a spiral grid into a column grid,
-// so that Fiji can use it for column-grid stitching.
-// Furthermore, it performs operations on seperate color channels 
-// (e.g. background subtraction, contrast stretching, histogram equalization),
-// and then merges all color channels into one image per tile.
- 
-// The output is a folder inside the root folder of the experiment
-// with the name of the well.
-// Inside this well_folder a folder "tiles" is created. It contains one image per tile.
-// The names of the tiles are ordered in a column grid.
-//-----------------------------------------------------------------------
-
-//---------------------------START FUNCTIONS-----------------------------
-
 function initialize_position(width, height){
 
 	//-----------------------------------------------------
@@ -203,6 +182,50 @@ function make_column_grid(width, height){
 	return matrix;
 }
 
+function column_to_spiral(nr, w){
+
+	column_grid = make_column_grid(w,w);
+	spiral_grid = make_spiral_grid(w,w);	
+	x = 0;
+	y = 0;
+	
+	for (i = 0; i < w*w; i++) {
+		
+		tile_nr = column_grid[x + y*w];
+		if(tile_nr == nr){
+			return spiral_grid[x + y*w]
+		}
+		
+		y = y + 1;
+		if (y == w){
+			y = 0;
+			x = x + 1;
+		}
+	}
+}
+
+function spiral_to_column(nr, w){
+	
+	column_grid = make_column_grid(w,w);
+	spiral_grid = make_spiral_grid(w,w);	
+	x = 0;
+	y = 0;
+	
+	for (i = 0; i < w*w; i++) {
+		
+		tile_nr = spiral_grid[x + y*w];
+		if(tile_nr == nr){
+			return column_grid[x + y*w]
+		}
+		
+		y = y + 1;
+		if (y == w){
+			y = 0;
+			x = x + 1;
+		}
+	}
+}
+
 function find_ch_operation_boolean(nr_channels, ch_operation_string){
 	
 	//----------------------------------------------------------------------------------
@@ -291,17 +314,14 @@ function get_img_file_name(file0, well, nr, ch){
 	file_name = parts[0] + "_" + parts[1] + "_" + well + "f" + nr_string + "d" + d2s(ch,0) + ".TIF";
 	return file_name;
 }
-//---------------------------END FUNCTIONS-----------------------------
 
-//---------------------------START SCRIPT------------------------------
-
-// User input
 #@ File (label="Raw folder", style="directory") raw
 #@ File (label="Root folder", style="directory") root
-#@ String (label="Wells you want to process (separated by commas)") well_string
+#@ String (label="Well") well
 #@ int (label="Magnification") M
 #@ int (label="Width/height of fused image") w
 #@ int (label="number of channels") nr_channels
+#@ String (label="tiles you want to threshold manually (separated by comma)") tile_nrs_string
 #@ String (label="set a threshold on channels (zero-based)") ch_threshold_string
 #@ String (label="thresholding methods for these channels (start with capital letter)") threshold_methods
 #@ String(label="enhance contrast on channels (zero-based)") ch_enhance_string
@@ -309,9 +329,13 @@ function get_img_file_name(file0, well, nr, ch){
 #@ String(label="subtract background on channels (zero-based)") ch_subtract_backround_string
 #@ int(label="rolling ball radius") rolling_ball_radius
 #@ boolean (label="Do you want to downscale (with a factor 2)?") down
-#@ boolean (label="Do you want to display the images?") see
 
-well_list = split(well_string, ",");
+inputFolder = raw + "/" + well;
+wellFolder = root + "/" + well;
+tileFolder = wellFolder + "/tiles"; 
+thresholdedTileFolder = tileFolder + "/thresholds";
+
+img_nrs = split(tile_nrs_string, ",");
 
 if (M==10){
 	sigma = "1.5";
@@ -323,39 +347,6 @@ else if (M==20){
 }
 else{
 	exit("Invalid magnification.");
-}
-
-if (!(see)){
-	setBatchMode(true);
-}
-
-// Loop over wells
-for (l = 0; l < well_list.length; l++) {
-
-	close("*");
-	
-	well = well_list[l];
-	input_folder = raw + "/" + well;
-	well_folder = root + "/" + well;
-	tile_folder = well_folder + "/tiles";
-	threshold_folder = tile_folder + "/thresholds";
-	
-	// Create well_folder if it did not exist already.
-	if (!(File.isDirectory(well_folder))){
-		File.makeDirectory(well_folder);
-		print("Created a new folder for well "+well+".");
-	}
-	// Create tile_folder if it did not exist already.
-	// If it did exist, ask the user if they want to overwrite it.
-	if (!(File.isDirectory(tile_folder))){
-		File.makeDirectory(tile_folder);
-	}
-	else{
-		showMessageWithCancel("Tiles already created!","Tiles for well "+well+" were already created.\nDo you want to continue and overwrite the old tiles?");
-	}
-	if (!(File.isDirectory(threshold_folder))){
-		File.makeDirectory(threshold_folder);
-	}
 }
 
 // Convert user inputs about channel operations (contrast enhancement, etc.)
@@ -371,114 +362,78 @@ ch_subtract_background = find_ch_operation_boolean(nr_channels, ch_subtract_back
 column_grid = make_column_grid(w,w);
 spiral_grid = make_spiral_grid(w,w);
 
-for (l = 0; l < well_list.length; l++) {
+// List all images in the raw input folder:
+file_list = getFileList(inputFolder);
+// Get the name of the first file (it serves as a template).
+file0 = file_list[0];
 
-	// Get well names and paths
-	well = well_list[l];
-	input_folder = raw + "/" + well;
-	well_folder = root + "/" + well;
-	tile_folder = well_folder + "/tiles";
-	threshold_folder = tile_folder + "/thresholds";
+// Loop over the tiles you want to threshold.
+for(i = 0; i < img_nrs.length; i++){
+
+	// Give the image the correct tile number.
+	// This number is based on the column grid.
+	img_nr = img_nrs[i];  // spiral index corresponding with (x,y) position
+	tile_nr = spiral_to_column(parseInt(img_nr), w);
 	
-	// List all images in the raw input folder:
-	file_list = getFileList(input_folder);
-	// Get the name of the first file (it serves as a template).
-	file0 = file_list[0];
+	tile_nr_string = number_to_string(tile_nr);
+	tile_name = "tile_" + tile_nr_string;
 	
-	// Initialize positions on grid
-	x = 0;
-	y = 0;
+	// Initialize arrays with filenames and channel numbers.
+	// They will later be used to merge the channels.
+	file_names = newArray(nr_channels);
+	ch_counts = newArray(nr_channels);
 	
-	threshold_method_list = split(threshold_methods, ",");
+	threshold_counter = 0;
+	ch_th_string = "";
 	
-	// Loop over tiles in the grid
-	for (i = 0; i < w*w; i++) {
-		print("Well "+well+": Processing tile "+d2s(i+1,0)+" out of "+d2s(w*w,0)+".");
-	
-		// Give the image the correct tile number.
-		// This number is based on the column grid.
-		tile_nr = column_grid[x + y*w]; // column index corresponding with (x,y) position
-		img_nr = spiral_grid[x + y*w];  // spiral index corresponding with (x,y) position
-		tile_nr_string = number_to_string(tile_nr);
-		tile_name = "tile_" + tile_nr_string;
+	// Loop over the channels in the image
+	for (ch = 0; ch < nr_channels; ch++){
+		file_name = get_img_file_name(file0, well, img_nr, ch);
+		file_names[ch] = file_name;
+		ch_counts[ch] = "c" + d2s(ch+1,0);
 		
-		// Initialize arrays with filenames and channel numbers.
-		// They will later be used to merge the channels.
-		file_names = newArray(nr_channels);
-		ch_counts = newArray(nr_channels);
+		// Open image
+		open(inputFolder + "/" + file_name);
+		if(down){
+			getDimensions(width, height, channels, slices, frames);
+			newWidth = d2s( floor(width / 2), 0 );
+			newHeight = d2s( floor(height / 2), 0 );
+			run("Size...", "width="+newWidth+" height="+newHeight+" depth=1 constrain average interpolation=Bilinear");
+		}
 	
-		threshold_counter = 0;
-		ch_th_string = "";
-		
-		// Loop over the channels in the image
-		for (ch = 0; ch < nr_channels; ch++){
-			file_name = get_img_file_name(file0, well, img_nr, ch);
-			file_names[ch] = file_name;
-			ch_counts[ch] = "c" + d2s(ch+1,0);
+		// Perform the operations if the user asked for it:
+		if ((ch_enhance[ch] == true) && (ch_equalize[ch] == false)){
+			run("Enhance Contrast...", "saturated=0.1 normalize");
+		}
+		if ((ch_enhance[ch] == true) && (ch_equalize[ch] == true)){
+			run("Enhance Contrast...", "saturated=0.1 normalize equalize");
+		}
+		if (ch_subtract_background[ch] == true){
+			run("Subtract Background...", "rolling="+d2s(rolling_ball_radius,0)+" disable");
+		}
+	
+		if (ch_threshold[ch] == true){
+			// Specify channel string name for merging threshold channels
+			ch_th_string = ch_th_string + "c" + d2s(threshold_counter+1,0) + "=th_" + d2s(threshold_counter+1,0) + " ";
+			run("Duplicate...", " ");
+			rename("th_" + d2s(threshold_counter+1,0));
+			run("Gaussian Blur...", "sigma="+sigma);
+			run("Threshold...");
+
+			waitForUser("Set threshold", "Set manually a threshold for this tile. Press OK when done.");
 			
-			// Open image
-			open(input_folder + "/" + file_name);
-			
-			if(down){
-				getDimensions(width, height, channels, slices, frames);
-				newWidth = d2s( floor(width / 2), 0 );
-				newHeight = d2s( floor(height / 2), 0 );
-				run("Size...", "width="+newWidth+" height="+newHeight+" depth=1 constrain average interpolation=Bilinear");
-			}
-	
-			// Perform the operations if the user asked for it:
-			if ((ch_enhance[ch] == true) && (ch_equalize[ch] == false)){
-				run("Enhance Contrast...", "saturated=0.1 normalize");
-			}
-			if ((ch_enhance[ch] == true) && (ch_equalize[ch] == true)){
-				run("Enhance Contrast...", "saturated=0.1 normalize equalize");
-			}
-			if (ch_subtract_background[ch] == true){
-				run("Subtract Background...", "rolling="+d2s(rolling_ball_radius,0)+" disable");
-			}
-
-			if (ch_threshold[ch] == true){
-				// Specify channel string name for merging threshold channels
-				ch_th_string = ch_th_string + "c" + d2s(threshold_counter+1,0) + "=th_" + d2s(threshold_counter+1,0) + " ";
-				th_method = threshold_method_list[threshold_counter];
-				run("Duplicate...", " ");
-				rename("th_" + d2s(threshold_counter+1,0));
-				run("Gaussian Blur...", "sigma="+sigma);
-				setAutoThreshold(th_method + " dark");
-				setOption("BlackBackground", true);
-				run("Convert to Mask");
-				threshold_counter = threshold_counter + 1;
-			}
-		}
-
-		// Merge the thresholded images
-		run("Merge Channels...", ch_th_string + "create");
-		save(threshold_folder + "/" + tile_name + ".tif");
-		// Close the thresholded images
-		for (t = 0; t < threshold_counter; t++) {
-			close("th_" + d2s(t+1,0));
-		}
-
-		// Find the right color for right channel (reverse order)
-		channel_string = "";
-		for (ch = 0; ch < nr_channels; ch++){
-			 channel_string = channel_string + ch_counts[ch] + "=" + file_names[nr_channels - ch - 1] + " ";
-		}
-		// Merge the channels
-		run("Merge Channels...", channel_string + "create");
-	
-		// Save the image and close it.
-		save(tile_folder + "/" + tile_name);
-		close();
-	
-		// Update position
-		y = y + 1;
-		if (y == w){
-			y = 0;
-			x = x + 1;
+			setOption("BlackBackground", true);
+			run("Convert to Mask");
+			threshold_counter = threshold_counter + 1;
 		}
 	}
-	print("Finished the preparation, you can now start stitching well "+well+".");
 
-}
-print("Prepared all wells.");
+	// Merge the thresholded images
+	run("Merge Channels...", ch_th_string + "create");
+	save(thresholdedTileFolder + "/" + tile_name + ".tif");
+	// Close the thresholded images
+	close("*");
+	
+}	
+print("All tiles are done.");
+	
