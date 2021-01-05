@@ -9,7 +9,7 @@ from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras import backend as keras
 
 
-def unet(nb_classes = 1, pretrained_weights = None,input_size = (512,512,1)):
+def unet(learning_rate = 1e-4, nb_classes = 2, pretrained_weights = None,input_size = (512,512,1)):
     inputs = Input(input_size)
     conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
     conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
@@ -48,16 +48,20 @@ def unet(nb_classes = 1, pretrained_weights = None,input_size = (512,512,1)):
     merge9 = concatenate([conv1,up9], axis = 3)
     conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
     conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
-    #conv9 = Conv2D(2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
-    #conv10 = Conv2D(1, 1, activation = 'sigmoid')(conv9)
+    
+    if nb_classes <= 2:
+        # output is only one layer
+        conv10 = Conv2D(2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+        outputimage = Conv2D(1, 1, activation = 'sigmoid')(conv10)
 
-    # Make the output multi-class
-    conv10 = Conv2D(nb_classes, 1, activation = 'softmax')(conv9)
-    outputimage = Reshape((input_size[0]*input_size[1], nb_classes))(conv10)
+    if nb_classes > 2:
+        # Make the output multi-class
+        conv10 = Conv2D(nb_classes, 1, activation = 'softmax')(conv9)
+        outputimage = Reshape((input_size[0]*input_size[1], nb_classes))(conv10)
 
     model = Model(input = inputs, output = outputimage)
 
-    model.compile(optimizer = Adam(lr = 3e-5), loss = 'binary_crossentropy', metrics = ['accuracy'])
+    model.compile(optimizer = Adam(lr = learning_rate), loss = 'binary_crossentropy', metrics = ['accuracy'])
     
     #model.summary()
 

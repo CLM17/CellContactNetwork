@@ -14,9 +14,10 @@ close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 experiment = 'WKS024';
-magnification = '10x';
-well = 'D06';
+magnification = '20x';
+well = 'B02';
 fieldSize = 1104;
+network_specifier = '_ml';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Calculate scale in um/pixels
@@ -46,7 +47,7 @@ end
 
 % Load data for this well (if it wasn't done already)
 if ~isfield(allData, well)
-    allData = update_all_data(allData, well, well_folder, T, scale);
+    allData = update_all_data(allData, well, well_folder, T, scale, network_specifier);
 end
 disp('All data loaded.')
 

@@ -1,4 +1,5 @@
-function simulate(experiment, magnification, well, fieldSizeString, keepPositionsString, description)
+function simulate(x, experiment, magnification, well, network_specifier,...
+                  fieldSizeString, keepPositionsString, description)
     
     root = fullfile('..','..','Experiments', experiment, magnification);
     cutoffDistance = 250; % cutoff in micron
@@ -12,40 +13,40 @@ function simulate(experiment, magnification, well, fieldSizeString, keepPosition
     end
     
     fieldSize = str2double(fieldSizeString);
+    nr = str2double(x);
 
-    %% ------------------------------START CODE--------------------------------
+    %% ----------------------------START CODE------------------------------
 
+    % generate random stream
+    myStream = RandStream('mlfg6331_64', 'Seed', nr);
+    
     % Load image and graph if this wasn't done already
-    if ~exist('T','var')
-        well_folder = fullfile(root, well);
-        xlsfileName = fullfile(root, 'Well locations.xlsx');
-        T = readtable(xlsfileName);
-    end
+    
+    well_folder = fullfile(root, well);
+    xlsfileName = fullfile(root, 'Well locations.xlsx');
+    T = readtable(xlsfileName);
 
-    if ~exist('allData','var')
-        allData = struct;
-    end
-
-    if ~isfield(allData, well)
-        scale = calculate_scale(magnification, fieldSize);
-        allData = update_all_data(allData, well, well_folder, T, scale);
-        allData = add_distributions_to_all_data(allData, well);
-    end
+    allData = struct;
+    scale = calculate_scale(magnification, fieldSize);
+    allData = update_all_data(allData, experiment, magnification,...
+                              well, well_folder, T, scale, network_specifier);
+    allData = add_distributions_to_all_data(allData, experiment, magnification, well);
+    
     disp('All data loaded.')
     
     % well locations
-    xc = allData.(well).xc;
-    yc = allData.(well).yc;
+    xc = allData.(experiment).(magnification).(well).xc;
+    yc = allData.(experiment).(magnification).(well).yc;
 
     % Get data of current well
-    G = allData.(well).G;
-    xNodes = allData.(well).xNodes - xc; % set center of well to x=0
-    yNodes = yc - allData.(well).yNodes; % set center of well to y=0
+    G = allData.(experiment).(magnification).(well).G;
+    xNodes = allData.(experiment).(magnification).(well).xNodes - xc; % set center of well to x=0
+    yNodes = yc - allData.(experiment).(magnification).(well).yNodes; % set center of well to y=0
 
     % pdf
-    pd_dist = allData.(well).pd_dist;
-    pd_edgeLength = allData.(well).pd_edgeLength;
-    density = allData.(well).density;
+    pd_dist = allData.(experiment).(magnification).(well).pd_dist;
+    pd_edgeLength = allData.(experiment).(magnification).(well).pd_edgeLength;
+    density = allData.(experiment).(magnification).(well).density;
 
     %% Generate random node positions with the same radial and angular 
     % distributions as the experimental result.
@@ -70,8 +71,8 @@ function simulate(experiment, magnification, well, fieldSizeString, keepPosition
         pdf_theta = truncate(pdf_theta, -pi, pi);
 
         % Generate random simulations with the same distribution
-        rSim = random(pdf_r, nNodes, 1);
-        theta_sim = random(pdf_theta, nNodes, 1);
+        rSim = random(pdf_r, myStream, nNodes, 1);
+        theta_sim = random(pdf_theta, myStream, nNodes, 1);
 
         xSim = rSim .* cos(theta_sim);
         ySim = rSim .* sin(theta_sim);
@@ -107,7 +108,7 @@ function simulate(experiment, magnification, well, fieldSizeString, keepPosition
 
     % An edge is made if the edge probability is larger than some random
     % number.
-    edges = edgeProbabilities > tril(rand(nNodes));
+    edges = edgeProbabilities > tril(rand(myStream, nNodes));
 
     % Make symmetric and make diagonal zeros.
     edges = triu(edges',1) + tril(edges);
@@ -115,23 +116,23 @@ function simulate(experiment, magnification, well, fieldSizeString, keepPosition
 
     GSim = graph(edges);
     
-    fname = fullfile(well_folder, [well,'_simulatedGraph_',description,'.mat']);
+    fname = fullfile(well_folder, [well,'_simulatedGraph_',description, '_', x, '.mat']);
     save(fname, 'G', 'xNodes', 'yNodes', 'GSim', 'xSim', 'ySim', 'pDist', 'pEdgelength', 'pConnect', 'smallDistances', 'description')
     disp('Output saved.')
 end
 
-%% ------------------------------FUNCTIONS---------------------------------
+%% ---------------------------HELPER FUNCTIONS-----------------------------
 
-function allData = add_distributions_to_all_data(allData, well)
+function allData = add_distributions_to_all_data(allData, experiment, magnification, well)
 
-    G = allData.(well).G;
-    xNodes = allData.(well).xNodes;
-    yNodes = allData.(well).yNodes;
+    G = allData.(experiment).(magnification).(well).G;
+    xNodes = allData.(experiment).(magnification).(well).xNodes;
+    yNodes = allData.(experiment).(magnification).(well).yNodes;
     [distances, existingEdgeLength] = distances_distributions(G, xNodes, yNodes);
     [pd_dist, pd_edgeLength, density] = find_probability_distributions(G, distances, existingEdgeLength);
-    allData.(well).pd_dist = pd_dist;
-    allData.(well).pd_edgeLength = pd_edgeLength;
-    allData.(well).density = density;
+    allData.(experiment).(magnification).(well).pd_dist = pd_dist;
+    allData.(experiment).(magnification).(well).pd_edgeLength = pd_edgeLength;
+    allData.(experiment).(magnification).(well).density = density;
     
 end
 

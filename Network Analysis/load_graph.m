@@ -1,4 +1,4 @@
-function [G, xNodes, yNodes] = load_graph(well_folder)
+function [G, xNodes, yNodes] = load_graph(well_folder, network_specifier)
 
     %----------------------------------------------------------------------
     % This function reads the .csv files created by fiji and converts the 
@@ -25,8 +25,11 @@ function [G, xNodes, yNodes] = load_graph(well_folder)
     %----------------------------------------------------------------------
     
     % Read csv files with edges & node positions
-    edges = csvread(fullfile(well_folder,'edges.csv'));
-    nuclei_com = csvread(fullfile(well_folder,'nuclei_com.csv'));
+    fNameEdges = ['edges', network_specifier, '.csv']; 
+    fNameCOM = ['nuclei_com', network_specifier, '.csv']; 
+    disp(fullfile(well_folder,fNameEdges))
+    edges = csvread(fullfile(well_folder,fNameEdges));
+    nuclei_com = csvread(fullfile(well_folder,fNameCOM));
     numNodes = size(nuclei_com,1);
     
     % Node positions

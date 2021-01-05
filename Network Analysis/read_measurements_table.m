@@ -1,6 +1,7 @@
-function [Measurements, measurementNames, cellValues] = read_measurements_table(well_folder, scale)
+function [Measurements, measurementNames, cellValues] = read_measurements_table(well_folder, scale, network_specifier)
 
-    cellMeasurementsTable = readtable(fullfile(well_folder,'cell_measurements.csv'));
+    fName = ['cell_measurements', network_specifier, '.csv'];
+    cellMeasurementsTable = readtable(fullfile(well_folder, fName));
 
     measurementNames = {'area', 'circularity', 'longness'};
 

@@ -1,7 +1,9 @@
 experiment = 'WKS024';
-magnification = '10x';
-well = 'B02';
+magnification = 'M20';
+well = 'D02';
+network_specifier = '_ml';
 fieldSizeString = '1104';
 keepPositionsString = 'false';
-description = '20201124';
-simulate(experiment, magnification, well, fieldSizeString, keepPositionsString, description);
+description = '20201230';
+simulate(nr, experiment, magnification, well, network_specifier,...
+         fieldSizeString, keepPositionsString, description)

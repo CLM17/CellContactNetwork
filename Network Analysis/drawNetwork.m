@@ -6,47 +6,60 @@ close all
 
 %% --------------------------SPECIFY PARAMETERS----------------------------
 
-experiment = 'JJ005';
-magnification = '20x';
-well = 'B03';               % well name
-nodeData = 'none';          % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
-nodeSize = 4;               % node size
+experiment = 'WKS024';
+magnification = 'M20';
+well = 'D02';               % well name
+network_specifier = '_ml';
+nodeData = 'degree';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
+nodeSize = 7;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
-lineWidth = 3;              % thickness of edges (= lines)
+lineWidth = 1.5;              % thickness of edges (= lines)
 edgeColor = 'w';            % color of edges ('w'=white, 'k'=black, 'g'=green, etc)
 edgeTransparency = 0.5;     % transparency of edges (0=fully transparent, 1=not transparent)
+qualityCheck = false;
 
 %% ------------------------------START CODE--------------------------------
 
 % Load image and graph if this wasn't done already
 root = fullfile('..','..','Experiments',experiment,magnification);
+%root = 'M:\tnw\bn\dm\Shared\Kasper\PhD\MinimalCellCultures\Experiments_and_Analysis\Experiments\WKS024\10x';
 well_folder = fullfile(root, well);
 
+% Initialise allData
 if ~exist('allData','var')
-    allData = struct;
+    allData.(experiment).(magnification) = struct;
 end
+if ~isfield(allData, experiment)
+    allData.(experiment) = struct;
+else
+    if ~isfield(allData.(experiment), magnification)
+        allData.(experiment).(magnification) = struct;
+    end
+end
+% Read csv 
 if ~exist('T','var')
     xlsfileName = fullfile(root, 'Well locations.xlsx');
     T = readtable(xlsfileName);
 end
 
 scale = 1; % Do not convert pixels to um
-if ~isfield(allData, well)
+if ~isfield(allData.(experiment).(magnification), well)
     disp(['Loading the graph of well ', well, '...'])
-    allData = update_all_data(allData, well, well_folder, T, scale);
+    allData = update_all_data(allData, experiment, magnification,...
+                              well, well_folder, T, scale, network_specifier);
     disp(['Loading the image for well ', well, '...'])
     [fused, cmap] = imread(fullfile(well_folder,[well,'_fused_RGB.tif']));
-    allData.(well).fused = fused;
-    allData.(well).cmap = cmap;
+    allData.(experiment).(magnification).(well).fused = fused;
+    allData.(experiment).(magnification).(well).cmap = cmap;
 end
 
 % Get image and graph of current well
 measurementNames = allData.measurementNames;
-fused = allData.(well).fused;
-cmap = allData.(well).cmap;
-G = allData.(well).G;
-xNodes = allData.(well).xNodes;
-yNodes = allData.(well).yNodes;
+fused = allData.(experiment).(magnification).(well).fused;
+cmap = allData.(experiment).(magnification).(well).cmap;
+G = allData.(experiment).(magnification).(well).G;
+xNodes = allData.(experiment).(magnification).(well).xNodes;
+yNodes = allData.(experiment).(magnification).(well).yNodes;
 n = numnodes(G);
 
 N = size(fused, 1);
@@ -54,8 +67,10 @@ M = size(fused, 2);
 
 % Calculate centrality if the user asked for it
 centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
-if (ismember(nodeData,centralityNames) && ~isfield(allData.(well), nodeData))
-    allData.(well).(nodeData) = centrality(G, nodeData);
+if (ismember(nodeData, centralityNames) && ...
+        ~isfield(allData.(experiment).(magnification).(well), nodeData))
+    data = centrality(G, nodeData);
+    allData.(experiment).(magnification).(well).(nodeData) = data==12;
 end
 
 % Draw graph as network & save the file
@@ -73,43 +88,56 @@ p = plot(G, 'XData', xNodes, 'YData', yNodes, ...
     'EdgeAlpha',edgeTransparency);
 
 if ismember(nodeData, centralityNames) || ismember(nodeData, measurementNames)
-    rgb = vals2colormap(allData.(well).(nodeData));
+    rgb = vals2colormap(allData.(experiment).(magnification).(well).(nodeData));
     p.NodeColor = rgb;
 end
+
+% bc = calculate_normalized_centrality(G, 'betweenness');
+% colors = ones(n, 3);
+% colors(bc > 0.1,:) = repmat([0,1,0], sum(bc>0.1), 1);
+% p.NodeColor = colors;
 
 saveas(gcf, fullfile('Figures', 'FullNetworks',[well,'_network.tif']))
 
 %% Quality check
 
-nImgs = 5;
-imgSize = 512;
-% set seed
-rng(1);
-xPos = randi(N - imgSize, [1, nImgs]);
-yPos = randi(M - imgSize, [1, nImgs]);
+if qualityCheck
+    nImgs = 5;
+    imgSize = 2 * 512;
+    % set seed
+    rng(1);
+    xPos = randi(N - imgSize, [1, nImgs]);
+    yPos = randi(M - imgSize, [1, nImgs]);
 
-for i = 1:nImgs
-    x = xPos(i);
-    y = yPos(i);
-    img = fused(y:y+imgSize, x:x+imgSize, :);
-    
-    nodesInImg = (xNodes >= x & xNodes <= x+imgSize) & (yNodes >= y & yNodes <= y+imgSize);
-    subG = subgraph(G, nodesInImg);
-    
-    disp(['Img ', num2str(i),': N nodes = ', num2str(numnodes(subG)), ', N edges = ', num2str(numedges(subG)),'.'])
-    
-    figure()
-    imshow(img)
-    hold on
+    for i = 1:nImgs
+        x = xPos(i);
+        y = yPos(i);
+        img = fused(y:y+imgSize, x:x+imgSize, :);
 
-    p = plot(subG, 'XData', xNodes(nodesInImg)-x, 'YData', yNodes(nodesInImg)-y, ...
-        'NodeColor', nodeColor,...
-        'MarkerSize',nodeSize,...
-        'NodeLabel',{},...
-        'LineWidth',lineWidth,...
-        'EdgeColor',edgeColor,...
-        'EdgeAlpha',edgeTransparency);
+        nodesInImg = (xNodes >= x & xNodes <= x+imgSize) & (yNodes >= y & yNodes <= y+imgSize);
+        subG = subgraph(G, nodesInImg);
+
+        disp(['Img ', num2str(i),': N nodes = ', num2str(numnodes(subG)), ', N edges = ', num2str(numedges(subG)),'.'])
+
+        figure()
+        imshow(img)
+        hold on
+
+        p = plot(subG, 'XData', xNodes(nodesInImg)-x, 'YData', yNodes(nodesInImg)-y, ...
+            'NodeColor', nodeColor,...
+            'MarkerSize',nodeSize,...
+            'NodeLabel',{},...
+            'LineWidth',lineWidth,...
+            'EdgeColor',edgeColor,...
+            'EdgeAlpha',edgeTransparency);
+
+        saveas(gcf, fullfile('Figures', 'Quality assessment',['img',num2str(i),'_',network_specifier,'.tif']))
+    end
 end
+
+%%
+bc = calculate_normalized_centrality(G, 'betweenness');
+
 
 %% ------------------------------FUNCTIONS---------------------------------
 

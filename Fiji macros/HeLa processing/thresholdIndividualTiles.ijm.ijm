@@ -1,4 +1,4 @@
-function initialize_position(width, height){
+function initialize_position(width, height, clockwise){
 
 	//-----------------------------------------------------
 	// Finds the center of a spiral grid, i.e. the 
@@ -11,18 +11,20 @@ function initialize_position(width, height){
 	// init_position: array of length 2. 
 	// Index 0 is the x position, index 1 is the y position.
 	//-----------------------------------------------------
+	add_y = 0;
+	if(clockwise == false){
+		add_y = 1;
+	}
 	
 	init_position = newArray(2);
 	if (width%2 == 0){
 		x = width / 2 - 1;
-	}
-	else{
+	}else{
 		x = floor(width / 2);
 	}
 	if (height%2 == 0){
-		y = height / 2 - 1;
-	}
-	else{
+		y = height / 2 - 1 + add_y;
+	}else{
 		y = floor(height / 2);
 	}
 	init_position[0] = x;
@@ -49,14 +51,17 @@ function compare_arrays(arr1, arr2){
 	return same;
 }
 
-function turn_right(current_direction){
+function turn_right(current_direction, clockwise){
 
 	//-----------------------------------------------------
 	// This function is called by make_spiral_grid().
 	
 	// It takes as input the current direction (north, south, west and east),
 	// and outputs the direction after turning right:
+	// if clockwise:
 	// north->east, south->west, east->south, west->north.
+	// else (counterclockwise):
+	// north->west, south->east, east->north, west->south.
 	
 	// All directions are arrays of length 2:
 	// index 0 is dx, index 1 is dy.
@@ -67,23 +72,34 @@ function turn_right(current_direction){
 	W = newArray(-1,0);
 	E = newArray(1,0);
 
-	if (compare_arrays(current_direction, NORTH)){
-		new_direction = E;
+	if (clockwise){
+		if (compare_arrays(current_direction, NORTH)){
+			new_direction = E;
+		}else if (compare_arrays(current_direction, S)){
+			new_direction = W;
+		}else if (compare_arrays(current_direction, E)){
+			new_direction = S;
+		}else if (compare_arrays(current_direction, W)){
+			new_direction = NORTH;
+		}
+		
+	}else{
+		if (compare_arrays(current_direction, NORTH)){
+			new_direction = W;
+		}else if (compare_arrays(current_direction, S)){
+			new_direction = E;
+		}else if (compare_arrays(current_direction, E)){
+			new_direction = NORTH;
+		}else if (compare_arrays(current_direction, W)){
+			new_direction = S;
+		}
 	}
-	else if (compare_arrays(current_direction, S)){
-		new_direction = W;
-	}
-	else if (compare_arrays(current_direction, E)){
-		new_direction = S;
-	}
-	else if (compare_arrays(current_direction, W)){
-		new_direction = NORTH;
-	}
+
 	return new_direction;
 	
 }
 
-function make_spiral_grid(width,height){
+function make_spiral_grid(width,height,clockwise){
 	//-----------------------------------------------------
 	// This function makes a spiral grid array.
 	// Note that 2D arrays are not supported by Fiji macro language.
@@ -105,13 +121,18 @@ function make_spiral_grid(width,height){
 	E = newArray(1,0);
 
 	// Initial position:
-	init_position = initialize_position(width, height);
+	init_position = initialize_position(width, height, clockwise);
 	x = init_position[0];
 	y = init_position[1];
+
 	// We want to start walking to the west. 
-	// This means our initial direction is north:
+	// This means our initial direction is north (clockwise) or south (counterclockwise):
 	// we then turn right immediately, and end up going west.
-	direction = NORTH;
+	if(clockwise){
+		direction = NORTH;
+	}else{
+		direction = S;
+	}
 	dx = direction[0];
 	dy = direction[1];
 
@@ -127,7 +148,7 @@ function make_spiral_grid(width,height){
 		count = count + 1;
 		
 		// Try to turn right:
-		new_direction = turn_right(direction);
+		new_direction = turn_right(direction, clockwise);
 		new_dx = new_direction[0];
 		new_dy = new_direction[1];
 		new_x = x + new_dx;
@@ -182,10 +203,10 @@ function make_column_grid(width, height){
 	return matrix;
 }
 
-function column_to_spiral(nr, w){
+function column_to_spiral(nr, w, clockwise){
 
 	column_grid = make_column_grid(w,w);
-	spiral_grid = make_spiral_grid(w,w);	
+	spiral_grid = make_spiral_grid(w,w,clockwise);	
 	x = 0;
 	y = 0;
 	
@@ -204,10 +225,10 @@ function column_to_spiral(nr, w){
 	}
 }
 
-function spiral_to_column(nr, w){
+function spiral_to_column(nr, w, clockwise){
 	
 	column_grid = make_column_grid(w,w);
-	spiral_grid = make_spiral_grid(w,w);	
+	spiral_grid = make_spiral_grid(w,w,clockwise);	
 	x = 0;
 	y = 0;
 	
@@ -321,12 +342,15 @@ function get_img_file_name(file0, well, nr, ch){
 #@ int (label="Magnification") M
 #@ int (label="Width/height of fused image") w
 #@ int (label="number of channels") nr_channels
-#@ String (label="tiles you want to threshold manually (separated by comma)") tile_nrs_string
+#@ int (label="number of bits") nr_bits
+#@ boolean (label="spiral clockwise?") clockwise
+#@ String (label="tiles you want to threshold manually (separated by comma). Choose 'all' to do all tiles.") tile_nrs_string
 #@ String (label="set a threshold on channels (zero-based)") ch_threshold_string
 #@ String (label="thresholding methods for these channels (start with capital letter)") threshold_methods
 #@ String(label="enhance contrast on channels (zero-based)") ch_enhance_string
 #@ String(label="equalize histogram on channels (zero-based)") ch_equalize_string
 #@ String(label="subtract background on channels (zero-based)") ch_subtract_backround_string
+#@ String(label="sigma for Gaussian blur") sigma_string
 #@ int(label="rolling ball radius") rolling_ball_radius
 #@ boolean (label="Do you want to downscale (with a factor 2)?") down
 
@@ -335,19 +359,50 @@ wellFolder = root + "/" + well;
 tileFolder = wellFolder + "/tiles"; 
 thresholdedTileFolder = tileFolder + "/thresholds";
 
-img_nrs = split(tile_nrs_string, ",");
+// Define the tile numbers:
+// If the user wants to threshold all tiles, make a list with all tile numbers.
+if (tile_nrs_string == "all"){
+	img_nrs = newArray(w*w);
+	for (i = 0; i < w*w; i++) {
+		img_nrs[i] = d2s(i,0);
+	}
+	
+}else if(startsWith(tile_nrs_string, ">")){
+	start_nr = parseInt( substring(tile_nrs_string, 1) );
+	img_nrs = newArray(w*w - start_nr);
+	count = 0;
+	for (i = start_nr; i < w*w; i++) {
+		img_nrs[count] = d2s(i,0);
+		count = count + 1;
+	}
+	
+}else if(startsWith(tile_nrs_string, "<")){
+	end_nr = parseInt( substring(tile_nrs_string, 1) );
+	img_nrs = newArray(end_nr + 1);
+	for (i = 0; i < end_nr + 1; i++) {
+		img_nrs[i] = d2s(i,0);
+	}
+	
+}else{
+	img_nrs = split(tile_nrs_string, ",");
+}
+print("Tiles to process:");
+Array.print(img_nrs);
 
 if (M==10){
-	sigma = "1.5";
 	print("Magnification 10x");
 }
 else if (M==20){
-	sigma = "2";
 	print("Magnification 20x");
 }
 else{
 	exit("Invalid magnification.");
 }
+sigma = parseInt(sigma_string);
+
+// Get screen width and height
+sw = screenWidth;
+sh = screenHeight;
 
 // Convert user inputs about channel operations (contrast enhancement, etc.)
 // into booleans.
@@ -360,20 +415,22 @@ ch_subtract_background = find_ch_operation_boolean(nr_channels, ch_subtract_back
 // Note that 2D arrays are not supported by Fiji macro language, so the arrays are 1D.
 // If you index it them with matrix[x + y * width], they are effectively 2D.
 column_grid = make_column_grid(w,w);
-spiral_grid = make_spiral_grid(w,w);
+spiral_grid = make_spiral_grid(w,w,clockwise);
 
 // List all images in the raw input folder:
 file_list = getFileList(inputFolder);
 // Get the name of the first file (it serves as a template).
 file0 = file_list[0];
 
+threshold_method_list = split(threshold_methods, ",");
+
 // Loop over the tiles you want to threshold.
 for(i = 0; i < img_nrs.length; i++){
 
 	// Give the image the correct tile number.
 	// This number is based on the column grid.
-	img_nr = img_nrs[i];  // spiral index corresponding with (x,y) position
-	tile_nr = spiral_to_column(parseInt(img_nr), w);
+	img_nr = parseInt(img_nrs[i]);  // spiral index corresponding with (x,y) position
+	tile_nr = spiral_to_column(img_nr, w, clockwise);
 	
 	tile_nr_string = number_to_string(tile_nr);
 	tile_name = "tile_" + tile_nr_string;
@@ -394,6 +451,7 @@ for(i = 0; i < img_nrs.length; i++){
 		
 		// Open image
 		open(inputFolder + "/" + file_name);
+		run(parseInt(nr_bits)+"-bit");
 		if(down){
 			getDimensions(width, height, channels, slices, frames);
 			newWidth = d2s( floor(width / 2), 0 );
@@ -415,9 +473,12 @@ for(i = 0; i < img_nrs.length; i++){
 		if (ch_threshold[ch] == true){
 			// Specify channel string name for merging threshold channels
 			ch_th_string = ch_th_string + "c" + d2s(threshold_counter+1,0) + "=th_" + d2s(threshold_counter+1,0) + " ";
+			th_method = threshold_method_list[threshold_counter];
 			run("Duplicate...", " ");
+			setLocation(floor(sw / 2), 0);
 			rename("th_" + d2s(threshold_counter+1,0));
 			run("Gaussian Blur...", "sigma="+sigma);
+			setAutoThreshold(th_method + " dark");
 			run("Threshold...");
 
 			waitForUser("Set threshold", "Set manually a threshold for this tile. Press OK when done.");
@@ -428,11 +489,13 @@ for(i = 0; i < img_nrs.length; i++){
 		}
 	}
 
-	// Merge the thresholded images
-	run("Merge Channels...", ch_th_string + "create");
-	save(thresholdedTileFolder + "/" + tile_name + ".tif");
-	// Close the thresholded images
-	close("*");
+	if(threshold_counter > 0){
+		// Merge the thresholded images
+		run("Merge Channels...", ch_th_string + "create");
+		save(thresholdedTileFolder + "/" + tile_name + ".tif");
+		// Close the thresholded images
+		close("*");
+	}
 	
 }	
 print("All tiles are done.");

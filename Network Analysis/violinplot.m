@@ -1,4 +1,4 @@
-function violins = violinplot(data, cats, varargin)
+function violins = violinplot(data, bw, cats, varargin)
 %Violinplots plots violin plots of some data and categories
 %   VIOLINPLOT(DATA) plots a violin of a double vector DATA
 %
@@ -17,6 +17,8 @@ function violins = violinplot(data, cats, varargin)
 %   VIOLINPLOT(DATA, CATEGORIES) where double vector DATA and vector
 %   CATEGORIES are of equal length; plots violins for each category in
 %   DATA.
+%
+%   bw = bandwidth of kernel density estimation.
 %
 %   violins = VIOLINPLOT(...) returns an object array of
 %   <a href="matlab:help('Violin')">Violin</a> objects.
@@ -115,7 +117,7 @@ function violins = violinplot(data, cats, varargin)
     elseif ismatrix(data)
         for n=1:size(data, 2)
             thisData = data(:, n);
-            violins(n) = Violin(thisData, n, varargin{:});
+            violins(n) = Violin(thisData, bw, n, varargin{:});
         end
         set(gca, 'XTick', 1:size(data, 2));
         if hascategories && length(cats) == size(data, 2)

@@ -1,28 +1,30 @@
-function initialize_position(width, height){
+function initialize_position(width, height, clockwise){
 
 	//-----------------------------------------------------
 	// Finds the center of a spiral grid, i.e. the 
 	// (x,y) location in the spiral grid with value 0.
-
+	//
 	// Inputs
 	// width & height: the dimensions of the spiral grid.
-
+	//
 	// Output
 	// init_position: array of length 2. 
 	// Index 0 is the x position, index 1 is the y position.
 	//-----------------------------------------------------
+	add_y = 0;
+	if(clockwise == false){
+		add_y = 1;
+	}
 	
 	init_position = newArray(2);
 	if (width%2 == 0){
 		x = width / 2 - 1;
-	}
-	else{
+	}else{
 		x = floor(width / 2);
 	}
 	if (height%2 == 0){
-		y = height / 2 - 1;
-	}
-	else{
+		y = height / 2 - 1 + add_y;
+	}else{
 		y = floor(height / 2);
 	}
 	init_position[0] = x;
@@ -49,14 +51,17 @@ function compare_arrays(arr1, arr2){
 	return same;
 }
 
-function turn_right(current_direction){
+function turn_right(current_direction, clockwise){
 
 	//-----------------------------------------------------
 	// This function is called by make_spiral_grid().
 	
 	// It takes as input the current direction (north, south, west and east),
 	// and outputs the direction after turning right:
+	// if clockwise:
 	// north->east, south->west, east->south, west->north.
+	// else (counterclockwise):
+	// north->west, south->east, east->north, west->south.
 	
 	// All directions are arrays of length 2:
 	// index 0 is dx, index 1 is dy.
@@ -67,23 +72,34 @@ function turn_right(current_direction){
 	W = newArray(-1,0);
 	E = newArray(1,0);
 
-	if (compare_arrays(current_direction, NORTH)){
-		new_direction = E;
+	if (clockwise){
+		if (compare_arrays(current_direction, NORTH)){
+			new_direction = E;
+		}else if (compare_arrays(current_direction, S)){
+			new_direction = W;
+		}else if (compare_arrays(current_direction, E)){
+			new_direction = S;
+		}else if (compare_arrays(current_direction, W)){
+			new_direction = NORTH;
+		}
+		
+	}else{
+		if (compare_arrays(current_direction, NORTH)){
+			new_direction = W;
+		}else if (compare_arrays(current_direction, S)){
+			new_direction = E;
+		}else if (compare_arrays(current_direction, E)){
+			new_direction = NORTH;
+		}else if (compare_arrays(current_direction, W)){
+			new_direction = S;
+		}
 	}
-	else if (compare_arrays(current_direction, S)){
-		new_direction = W;
-	}
-	else if (compare_arrays(current_direction, E)){
-		new_direction = S;
-	}
-	else if (compare_arrays(current_direction, W)){
-		new_direction = NORTH;
-	}
+
 	return new_direction;
 	
 }
 
-function make_spiral_grid(width,height){
+function make_spiral_grid(width,height,clockwise){
 	//-----------------------------------------------------
 	// This function makes a spiral grid array.
 	// Note that 2D arrays are not supported by Fiji macro language.
@@ -105,13 +121,18 @@ function make_spiral_grid(width,height){
 	E = newArray(1,0);
 
 	// Initial position:
-	init_position = initialize_position(width, height);
+	init_position = initialize_position(width, height, clockwise);
 	x = init_position[0];
 	y = init_position[1];
+
 	// We want to start walking to the west. 
-	// This means our initial direction is north:
+	// This means our initial direction is north (clockwise) or south (counterclockwise):
 	// we then turn right immediately, and end up going west.
-	direction = NORTH;
+	if(clockwise){
+		direction = NORTH;
+	}else{
+		direction = S;
+	}
 	dx = direction[0];
 	dy = direction[1];
 
@@ -127,7 +148,7 @@ function make_spiral_grid(width,height){
 		count = count + 1;
 		
 		// Try to turn right:
-		new_direction = turn_right(direction);
+		new_direction = turn_right(direction, clockwise);
 		new_dx = new_direction[0];
 		new_dy = new_direction[1];
 		new_x = x + new_dx;
@@ -205,6 +226,17 @@ function column_to_spiral(nr, w){
 }
 
 nr = 0;
-w = 8;
-spiral_nr = column_to_spiral(nr, w);
-print("Image number in spiral grid corresponding to nr "+d2s(nr,0)+" in column grid is "+d2s(spiral_nr,0));
+w = 15;
+clockwise = true;
+
+spiral = make_spiral_grid(w,w, clockwise);
+
+print("\n");
+for (y = 0; y < w; y++) {
+	line = "";
+	for (x = 0; x < w; x++) {
+		line = line + d2s(spiral[x + y*w],0) + " ";
+	}
+	print(line);
+}
+

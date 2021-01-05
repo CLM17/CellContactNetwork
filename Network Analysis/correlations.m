@@ -1,9 +1,10 @@
 close all
 
-experiment = 'WKS024';
-magnification = '10x';
-well = 'D06';
+experiment = 'JJ005';
+magnification = '20x';
+well = 'C02';
 fieldSize = 1104;
+network_specifier = '';
 
 %% ------------------------------START CODE--------------------------------
 
@@ -23,7 +24,7 @@ end
 
 if ~isfield(allData, well)
     scale = calculate_scale(magnification, fieldSize);
-    allData = update_all_data(allData, well, well_folder, T, scale);
+    allData = update_all_data(allData, well, well_folder, T, scale, network_specifier);
 end
 disp('All data loaded.')
 
@@ -81,7 +82,7 @@ end
 
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
-figName = fullfile('Figures/Correlations/',[experiment, '_', magnification, '_', well,'_measurementCentralityCorrelations.png']);
+figName = fullfile('Figures/',[experiment, '_', magnification, '_', well,'_measurementCentralityCorrelations.png']);
 saveas(gcf, figName)
 
 %% Plot all measurements
@@ -114,7 +115,7 @@ end
 
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
-figName = fullfile('Figures/Correlations/',[experiment, '_', magnification, '_', well,'_measurementCorrelations.png']);
+figName = fullfile('Figures/',[experiment, '_', magnification, '_', well,'_measurementCorrelations.png']);
 saveas(gcf, figName)
 
 %% Plot all centralities
@@ -146,5 +147,5 @@ end
 
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
-figName = fullfile('Figures/Correlations/',[experiment, '_', magnification, '_', well,'_centralityCorrelations.png']);
+figName = fullfile('Figures/',[experiment, '_', magnification, '_', well,'_centralityCorrelations.png']);
 saveas(gcf, figName)

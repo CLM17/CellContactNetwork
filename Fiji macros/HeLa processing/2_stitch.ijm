@@ -1,6 +1,5 @@
 //-----------------------------------------------------------------------
 // STITCH A GRID OF IMAGES
-
 // Macro for stitching tiles (created by high content microscope) into a fused image.
 // Created 16-10-2020 by Lukas van den Heuvel.
 //
@@ -11,9 +10,10 @@
 // (1) Ask the user for experiment directory (=root), well, and number of stitched images on one axis (w).
 // (2) Perform grid stitching and save the result.;
 // (4) Stitch the thesholded images, if the user wants to. 
-//-----------------------------------------------------------------------
+//
+//---------------------------START FUNCTIONS-----------------------------
 
-function initialize_position(width, height){
+function initialize_position(width, height, clockwise){
 
 	//-----------------------------------------------------
 	// Finds the center of a spiral grid, i.e. the 
@@ -26,18 +26,20 @@ function initialize_position(width, height){
 	// init_position: array of length 2. 
 	// Index 0 is the x position, index 1 is the y position.
 	//-----------------------------------------------------
+	add_y = 0;
+	if(clockwise == false){
+		add_y = 1;
+	}
 	
 	init_position = newArray(2);
 	if (width%2 == 0){
 		x = width / 2 - 1;
-	}
-	else{
+	}else{
 		x = floor(width / 2);
 	}
 	if (height%2 == 0){
-		y = height / 2 - 1;
-	}
-	else{
+		y = height / 2 - 1 + add_y;
+	}else{
 		y = floor(height / 2);
 	}
 	init_position[0] = x;
@@ -64,14 +66,17 @@ function compare_arrays(arr1, arr2){
 	return same;
 }
 
-function turn_right(current_direction){
+function turn_right(current_direction, clockwise){
 
 	//-----------------------------------------------------
 	// This function is called by make_spiral_grid().
 	
 	// It takes as input the current direction (north, south, west and east),
 	// and outputs the direction after turning right:
+	// if clockwise:
 	// north->east, south->west, east->south, west->north.
+	// else (counterclockwise):
+	// north->west, south->east, east->north, west->south.
 	
 	// All directions are arrays of length 2:
 	// index 0 is dx, index 1 is dy.
@@ -82,23 +87,34 @@ function turn_right(current_direction){
 	W = newArray(-1,0);
 	E = newArray(1,0);
 
-	if (compare_arrays(current_direction, NORTH)){
-		new_direction = E;
+	if (clockwise){
+		if (compare_arrays(current_direction, NORTH)){
+			new_direction = E;
+		}else if (compare_arrays(current_direction, S)){
+			new_direction = W;
+		}else if (compare_arrays(current_direction, E)){
+			new_direction = S;
+		}else if (compare_arrays(current_direction, W)){
+			new_direction = NORTH;
+		}
+		
+	}else{
+		if (compare_arrays(current_direction, NORTH)){
+			new_direction = W;
+		}else if (compare_arrays(current_direction, S)){
+			new_direction = E;
+		}else if (compare_arrays(current_direction, E)){
+			new_direction = NORTH;
+		}else if (compare_arrays(current_direction, W)){
+			new_direction = S;
+		}
 	}
-	else if (compare_arrays(current_direction, S)){
-		new_direction = W;
-	}
-	else if (compare_arrays(current_direction, E)){
-		new_direction = S;
-	}
-	else if (compare_arrays(current_direction, W)){
-		new_direction = NORTH;
-	}
+
 	return new_direction;
 	
 }
 
-function make_spiral_grid(width,height){
+function make_spiral_grid(width,height,clockwise){
 	//-----------------------------------------------------
 	// This function makes a spiral grid array.
 	// Note that 2D arrays are not supported by Fiji macro language.
@@ -120,13 +136,18 @@ function make_spiral_grid(width,height){
 	E = newArray(1,0);
 
 	// Initial position:
-	init_position = initialize_position(width, height);
+	init_position = initialize_position(width, height, clockwise);
 	x = init_position[0];
 	y = init_position[1];
+
 	// We want to start walking to the west. 
-	// This means our initial direction is north:
+	// This means our initial direction is north (clockwise) or south (counterclockwise):
 	// we then turn right immediately, and end up going west.
-	direction = NORTH;
+	if(clockwise){
+		direction = NORTH;
+	}else{
+		direction = S;
+	}
 	dx = direction[0];
 	dy = direction[1];
 
@@ -142,7 +163,7 @@ function make_spiral_grid(width,height){
 		count = count + 1;
 		
 		// Try to turn right:
-		new_direction = turn_right(direction);
+		new_direction = turn_right(direction, clockwise);
 		new_dx = new_direction[0];
 		new_dy = new_direction[1];
 		new_x = x + new_dx;
@@ -212,11 +233,13 @@ function number_to_string(nr){
 	return nr_string;
 }
 
+//----------------------------------START SCRIPT---------------------------------
+
 close("*");
 // User input
 #@ File (label="Root", style="directory") root
 #@ String (label="Well name") well 
-#@ String (label="Width/height of fused image") w
+#@ int (label="Width/height of fused image") w
 #@ String (label="Overlap (%)") overlap
 #@ String (label="How many bits?") bits
 #@ boolean (label="Stitch the thresholded tiles?") stitch_th
@@ -226,8 +249,9 @@ close("*");
 //close("*");
 setBatchMode(true);
 
-wellFolder = root + "/" + well;
-output_file = wellFolder + "/"+well+"_fused.tif";
+wellFolder = root + "\\" + well;
+output_file = wellFolder + "\\"+well+"_fused.tif";
+print(wellFolder);
 
 // If the fused image already exists, ask the user if they want to overwrite:
 if (File.exists(output_file)){
@@ -235,9 +259,10 @@ if (File.exists(output_file)){
 }
 
 // Get dimensions of the first tile:
-fname = root+"/"+well+"/tiles/tile_00.tif";
-tileFolder = root + "/" + well + "/tiles";
-thresholdTileFolder = tileFolder + "/thresholds";
+fname = root+"\\"+well+"\\tiles\\tile_00.tif";
+tileFolder = root + "\\" + well + "\\tiles";
+print(tileFolder);
+thresholdTileFolder = tileFolder + "\\thresholds";
 open(fname);
 getDimensions(width, height, channels, slices, frames);
 close();
@@ -253,7 +278,7 @@ if (slices > channels){
 		else{
 			n = d2s(i,0);
 		}
-		fname = root+"/"+well+"/tiles/tile_"+n+".tif";
+		fname = root+"\\"+well+"\tiles\tile_"+n+".tif";
 		open(fname);
 		print("Converting z-stack to color channel in tile "+n);
 		run("Properties...", "channels="+d2s(slices,0)+" slices=1 frames=1 pixel_width=1.0000 pixel_height=1.0000 voxel_depth=1.0000");
@@ -269,7 +294,7 @@ print("Starting the stitching...");
 // Normal stitching
 if (!(brute_force)){
 	print("stitching");
-	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+w+" grid_size_y="+w+" tile_overlap="+overlap+" first_file_index_i=0 directory="+tileFolder+" file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
+	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+d2s(w,0)+" grid_size_y="+d2s(w,0)+" tile_overlap="+overlap+" first_file_index_i=0 directory="+tileFolder+" file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
 }
 
 // Brute-force stitching, only if normal stitching does not work
@@ -307,7 +332,7 @@ else if (brute_force){
 }
 
 // Copy registered tile configuration to thresholds folder
-File.copy(tileFolder + "/TileConfiguration.registered.txt", tileFolder + "/thresholds/TileConfiguration.registered.txt")
+File.copy(tileFolder + "\\TileConfiguration.registered.txt", tileFolder + "\\thresholds\\TileConfiguration.registered.txt")
 
 // Convert to lower bount of bits
 print("Converting to "+bits+"-bit. Please wait for a message box.");
@@ -315,14 +340,25 @@ run(bits+"-bit");
 
 // Let the user change the LUT
 setBatchMode("show");
+
+// Ask the user if they are happy with the fused image. If not, abort macro
+s = getString("Are you happy with the stitched image?", "yes");
+if(!(s == "yes")){
+	exit("Macro was aborted by user");
+}
+
 title = "Set the right colors.";
 message = "Change the LUT of the channels to set the right colors.\nPress OK when you are done.";
 waitForUser(title, message);
 
-// Save result
+// Save result (2-channel and RGB color)
 print("Saving the result...");
 saveAs("Tiff", output_file);
-close();
+
+print("Converting to 8-bit RGB and saving it as seperate tif tile...");
+run("RGB Color");
+saveAs(root+"\\"+well+"\\"+well+"_fused_RGB.tif");
+close("*");
 
 // Stitch the thresholded images if the user wants to
 //run("Tiles to Fused", "tiledirectory="+tileFolder+" welllocationstextfile="+textFileConfigurations+" fusedwidth="+width+" fusedheight="+height);
@@ -332,16 +368,12 @@ if(stitch_th){
 	fname = thresholdTileFolder + "/tile_00.tif";
 	open(fname);
 	getDimensions(width, height, channels, slices, frames);
+	close();
 	
 	print("Starting the stitch of thresholded images...");
 	run("Grid/Collection stitching", "type=[Positions from file] order=[Defined by TileConfiguration] directory="+thresholdTileFolder+" layout_file=TileConfiguration.registered.txt fusion_method=[Max. Intensity] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
 	rename("threshold");
 	run("Split Channels");
-
-	spiral_grid = make_spiral_grid(w,w);
-	setJustification("center");
-	setColor("red");
-	setFont("SansSerif", 25);
 
 	// Run over the channels
 	chNames = newArray(channels);
@@ -349,21 +381,6 @@ if(stitch_th){
 		selectWindow("C"+d2s(c+1,0)+"-threshold");
 		setBatchMode("show");
 		run("Grays");
-
-		// Draw ROIs
-		x = 0;
-		y = 0;
-		for (i = 0; i < w*w; i++){
-			img_nr = spiral_grid[x + y*w];
-			drawString(number_to_string(img_nr), (x+0.5)*width, (y+0.5)*height);
-			
-			// Update position
-			y = y + 1;
-			if (y == w){
-				y = 0;
-				x = x + 1;
-			}
-		}
 	
 		// Let the user choose a name for this channel
 		// The computer suggests a name based on the channel nr.
@@ -373,10 +390,47 @@ if(stitch_th){
 		else{
 			suggestedName = "phalloidin";
 		}
-		chNames[c] = getString("Name of this channel:", suggestedName);
-		print("Saving the thresholded result...");
-		save(wellFolder + "/" + well+"_th_"+ chNames[c] +".tif");
-		close();
+		
+		// Ask the user if they are happy with the tiles
+		s = getString("Are you happy with the thresholds?", "yes");
+
+		// If yes, save result
+		if(s=="yes"){
+			chNames[c] = getString("Name of this channel:", suggestedName);
+			print("Saving the thresholded result...");
+			save(wellFolder + "/" + well+"_th_"+ chNames[c] +".tif");
+			close();
+		}
+		
+		// If not, let the user see the tile nrs.
+		else{
+			// Ask the user clockwise or counterclockwise
+			s = getString("Was the spiral grid clockwise or counterclockwise?", "clockwise");
+
+			clockwise = false;
+			if(s == "clockwise"){
+				clockwise = true;
+			}
+			
+			spiral_grid = make_spiral_grid(w,w,clockwise);
+			setJustification("center");
+			setFont("SansSerif", 300);
+		
+			x = 0;
+			y = 0;
+			for (i = 0; i < w*w; i++){
+				img_nr = spiral_grid[x + y*w];
+				drawString(number_to_string(img_nr), (x+0.5)*width, (y+0.5)*height, "red");
+				
+				// Update position
+				y = y + 1;
+				if (y == w){
+					y = 0;
+					x = x + 1;
+				}
+			}
+			waitForUser("These are the tile numbers. Use the macro thresholdIndividualTiles to manually set a threshold on the tiles you wish to adjust.");
+		}
 	}
 }
 

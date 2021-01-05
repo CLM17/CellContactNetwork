@@ -1,25 +1,91 @@
 close all
+addpath('BrainConnectivity')
 
 experiment = 'WKS024';
-magnification = '10x';
-well = 'B02';
-description = 'simulateDistances';
+magnification = 'M20';
+well = 'D02';
+description = '20201230';
 
 %% ------------------------------START CODE--------------------------------
 root = fullfile('..','..','Experiments', experiment, magnification);
 well_folder = fullfile(root, well);
-load(fullfile(well_folder, [well,'_simulatedGraph_',description,'.mat']));
+
+Data = struct();
+for i = 1:N
+    nr = num2str(i);
+    load(fullfile(well_folder, [well,'_simulatedGraph_',description,'_',nr,'.mat']));
+    Data(i).(well).GSim.Graph = GSim;
+end
 
 %% Calulcate centralities
-Centralities = struct();
 centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
 nC = length(centralityNames);
 
 for i = 1:nC
     cName = centralityNames{i};
-    Centralities.(well).('G').(cName) = centrality(G, cName);
-    Centralities.(well).('GSim').(cName) = centrality(GSim, cName);
+    Data.(well).('G').(cName) = calculate_normalized_centrality(G, cName);
+    Data.(well).('GSim').(cName) = calculate_normalized_centrality(GSim, cName);
 end
+
+graphs = {'G', 'GSim'};
+for i = 1:length(graphs)
+    
+    graphName = graphs{i};
+    if strcmp(graphName, 'G')
+        Graph = G;
+    elseif strcmp(graphName, 'GSim')
+        Graph = GSim;
+    end
+
+    % Connectedness
+    conComp = conncomp(Graph);
+    sizeLargestGraph = sum( conComp == mode(conComp) );
+    % Avg path length
+    d = distances(Graph);
+    d(d==inf) = [];
+    d(d==0) = [];
+    % Assortativity
+    flag = 0;
+
+    Data.(well).(graphName).assort = full(assortativity(adjacency(GSim), flag));
+    Data.(well).(graphName).connectedness = sizeLargestGraph / numnodes(Graph);
+    Data.(well).(graphName).avgPathLength = mean(d);
+end
+
+%% Compare graph measures
+figure()
+
+subplot(1,3,1)
+data = [Data.(well).G.degree, Data.(well).GSim.degree];
+v = violinplot(data,1);
+for i = 1:2
+    v(i).EdgeColor = [1,1,1];
+    v(i).ShowData = false;
+end
+
+
+subplot(1,3,2)
+data = [Data.(well).G.closeness, Data.(well).GSim.closeness];
+v = violinplot(data, 0.0007);
+for i = 1:2
+    v(i).EdgeColor = [1,1,1];
+    v(i).ShowData = false;
+end
+
+subplot(1,3,3)
+data = [Data.(well).G.betweenness, Data.(well).GSim.betweenness];
+v = violinplot(data, 0.001);
+for i = 1:2
+    v(i).EdgeColor = [1,1,1];
+    v(i).ShowData = false;
+end
+ylim([0,0.035])
+
+%%
+figure()
+boxplot(data)
+set(gca, 'YScale', 'log')
+
 
 %% Plot distributions
 figure()
@@ -42,8 +108,8 @@ saveas(gcf, figName)
 figure()
 for i = 1:nC
     cName = centralityNames{i};
-    cObserved = Centralities.(well).('G').(cName);
-    cSimulated = Centralities.(well).('GSim').(cName);
+    cObserved = Data.(well).('G').(cName);
+    cSimulated = Data.(well).('GSim').(cName);
     
     subplot(3,nC,i)
     p1 = plot(G, 'XData', xNodes, 'YData', yNodes, 'markersize',2);
@@ -79,8 +145,8 @@ saveas(gcf, figName)
 
 %%
 N = numnodes(G);
-bco = Centralities.(well).('G').('betweenness') * 2 / ((N-1)*(N-2));
-bcs = Centralities.(well).('GSim').('betweenness') * 2 / ((N-1)*(N-2));
+bco = Data.(well).('G').('betweenness') * 2 / ((N-1)*(N-2));
+bcs = Data.(well).('GSim').('betweenness') * 2 / ((N-1)*(N-2));
 
 figure()
 
@@ -133,6 +199,52 @@ while c < 5
     histogram( centrality(GSub, 'betweenness') / ((N-1)*(N-2)), 'FaceColor', colour(1,:))
     c = c + 1;
 end
+
+%% Check if distances are in the same distribution
+[X,Y] = meshgrid(xNodes, yNodes);
+A = adjacency(G);
+distE = sqrt( (X-X').^2 + (Y-Y').^2 ) .* A;
+
+[Xsim, Ysim] = meshgrid(xSim, ySim);
+Asim = adjacency(GSim);
+distSimE = sqrt( (Xsim-Xsim').^2 + (Ysim-Ysim').^2 ) .* Asim;
+
+%%
+[h,p] = kstest2(full(distE(distE>0)), full(distSimE(distSimE>0)));
+
+
+%% Plot subgraphs
+
+%% 
+% subgraphs = conncomp(GSim);
+% nSubGraphs = length(subgraphs);
+% count = zeros(1, length(subgraphs));    
+% 
+% % count(i) number of nodes in subgraph to which node i belongs.
+% for i = 1:nSubGraphs
+%     count(i) = sum(subgraphs == subgraphs(i));
+% end
+% 
+% % S(n) is the amount of subgraphs with size n.
+% subgraphSize = cell(1, length(unique(count)));
+% S = zeros(1, length(unique(count)));
+% c = 0;
+% for n = unique(count)
+%     c = c + 1;
+%     subgraphSize{c} = num2str(n);
+%     S(c) = sum(count == n) / n;
+% end
+% 
+% c = 0;
+% for n = 3:5
+%     c = c + 1;
+%     subplot(2,3,3+c)
+%     GSub = subgraph(GSim, count == n);
+%     plot(GSub, 'NodeLabel',{})
+%     title(['n = ', num2str(n)])
+% end
+
+
 
 %%
 function rgb = vals2colormap(vals, colormap, crange)

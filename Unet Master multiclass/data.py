@@ -43,7 +43,12 @@ def adjustData(img,mask,flag_multi_class,num_class):
         mask = new_mask
     elif(np.max(img) > 1):
         img = img / np.max(img)
-        mask = mask / np.max(mask)
+        
+        max_mask = np.max(mask)
+        if max_mask == 0:
+            max_mask = 1
+            
+        mask = mask / max_mask
         mask[mask > 0.5] = 1
         mask[mask <= 0.5] = 0
     return (img,mask)
@@ -90,7 +95,7 @@ def testGenerator(test_path,num_image = 30,target_size = (512,512),flag_multi_cl
         img = io.imread(os.path.join(test_path,"%d.tif"%i),as_gray = as_gray)
         img = img / np.max(img)
         img = trans.resize(img,target_size)
-        img = np.reshape(img,img.shape+(1,)) if (not flag_multi_class) else img
+        #img = np.reshape(img,img.shape+(1,)) if (not flag_multi_class) else img
         img = np.reshape(img,(1,)+img.shape)
         yield img
 
@@ -98,7 +103,7 @@ def predictGenerator(img_list,target_size = (512,512),flag_multi_class = False):
     for img in img_list:
         img = img / np.max(img)
         img = trans.resize(img,target_size)
-        img = np.reshape(img,img.shape+(1,)) if (not flag_multi_class) else img
+        #img = np.reshape(img,img.shape+(1,)) if (not flag_multi_class) else img
         img = np.reshape(img,(1,)+img.shape)
         yield img
 
@@ -130,6 +135,9 @@ def labelVisualize(num_class,color_dict,img):
 
 def saveResult(save_path,npyfile,target_size=(512,512),flag_multi_class = False,num_class = 2):
     for i,item in enumerate(npyfile):
-        item = item.reshape((target_size[0],target_size[1],num_class))
+        if num_class == 2:
+            item = item.reshape((target_size[0],target_size[1],1))
+        else:
+            item = item.reshape((target_size[0],target_size[1],num_class))
         #img = labelVisualize(num_class,COLOR_DICT,item) if flag_multi_class else item[:,:,0]
         io.imsave(os.path.join(save_path,"%d_predict.tif"%i),item)

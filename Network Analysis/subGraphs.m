@@ -1,14 +1,15 @@
 close all
 
 experiment = 'WKS024';
-magnification = '10x';
-well = 'D05';
+magnification = '20x';
+well = 'B03';
 fieldSize = 1104;           % Size of 1 field.
+network_specifier = '_ml';
 
 loadImage = true;           % Set to true if you want to display an image
 N = 3;                      % Number of nodes in subgraph you want to display on the image.
 
-nodeSize = 3;               % node size
+nodeSize = 7;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
 lineWidth = 2;              % thickness of edges (= lines)
 edgeColor = 'w';            % color of edges ('w'=white, 'k'=black, 'g'=green, etc)
@@ -39,7 +40,7 @@ end
 
 scale = 1; % do not convert sizes to um.
 if ~isfield(allData, well)
-    allData = update_all_data(allData, well, well_folder, T, scale);
+    allData = update_all_data(allData, well, well_folder, T, scale, network_specifier);
     
     if (loadImage)
         disp(['Loading the image of well ',well,'...'])

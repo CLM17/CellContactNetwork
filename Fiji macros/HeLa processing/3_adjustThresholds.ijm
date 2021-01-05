@@ -33,9 +33,10 @@ close("*")
 #@ String (label="Names of the thresholded channels") chNamesString
 
 // Specify the thresholds tile folder as tilefolder.
-wellFolder = root + "/" + well;
-tileFolder = wellFolder + "/tiles/thresholds";
-textFileConfigurations = wellFolder + "/tiles/TileConfiguration.txt";
+wellFolder = root + "\\" + well;
+tileFolder = wellFolder + "\\tiles\\thresholds";
+textFileConfigurations = wellFolder + "\\tiles\\TileConfiguration.txt";
+print(tileFolder);
 
 // Check if the thresholded imgages exist.
 chNames = split(chNamesString, ",");
@@ -47,8 +48,8 @@ for (c = 0; c < chNames.length; c++) {
 }
 
 // Open the fused image
-print("Reading the fused image...");
-open(wellFolder + "/" + well+"_fused.tif");
+print("Reading the fused RGB image...");
+open(wellFolder + "\\" + well+"_fused_RGB.tif");
 getDimensions(width, height, channels, slices, frames);
 fname =  getTitle();
 
@@ -100,18 +101,28 @@ waitForUser(title2, message2);
 
 // Convert to 8-bit RGB
 selectWindow(fname);
-print("Converting to 8-bit RGB and saving it as seperate tif tile...");
-run("RGB Color");
+//print("Converting to 8-bit RGB and saving it as seperate tif tile...");
+//run("RGB Color");
 
 // Clear everything outside the oval selection
 print("Clearing the outside of the well...");
 roiManager("Select", 0);
 run("Clear Outside");
 
-
 // Save the RGB color. Will later be used by Matlab to draw the network on.
-saveAs(root+"/"+well+"/"+well+"_fused_RGB.tif");
-close();
+saveAs(root+"\\"+well+"\\"+well+"_fused_RGB.tif");
+//close();
+
+// Clear the outside of the well for boundary image, if it exists
+boundaryName = wellFolder + "/" + well +"_boundaries.tif";
+if (File.exists(boundaryName)){
+	open(boundaryName);
+	roiManager("Select", 0);
+	run("Clear Outside");
+	waitForUser("Check threshold");
+	save(boundaryName);
+	close();
+}
 
 // Clear the outside of the well in the thresholded images
 channels = chNames.length;
@@ -151,7 +162,7 @@ for (c = 0; c < channels; c++) {
 		run("Clear", "slice");
 		roiManager("deselect");
 	}
-	save(wellFolder + "/" + well+"_th_"+ chNames[c] +".tif");
+	save(wellFolder + "\\" + well+"_th_"+ chNames[c] +".tif");
 	close();
 }
 

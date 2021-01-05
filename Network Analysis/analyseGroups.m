@@ -23,9 +23,10 @@ close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 experiment = 'WKS024';
-magnification = '10x';
+magnification = 'M10';
 plotting = 'scatterplot';
 fieldSize = 1104;
+network_specifier = '';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Define groups
@@ -45,7 +46,7 @@ end
 groups = struct();
 if strcmp(experiment, 'WKS024')
     
-    root = '../../Experiments/WKS024/10x';
+    root = '../../Experiments/WKS024/M10';
         
     groups(1).('Description') = '1';
     groups(1).('Wells') = {'B02', 'C02', 'D02'};
@@ -102,36 +103,41 @@ for i = 1:nGroups
     descriptionArray{i} = groups(i).('Description');
 
     numCells = zeros(1, length(wellArray));
+    confluency = zeros(1, length(wellArray));
     meanDegree = zeros(1, length(wellArray));
     meanCloseness = zeros(1, length(wellArray));
     meanBetweenness = zeros(1, length(wellArray));
     meanR = zeros(1, length(wellArray));
     density = zeros(1, length(wellArray));
     meanD = zeros(1, length(wellArray));
+    connected = zeros(1, length(wellArray));
 
     for j = 1:length(wellArray)
         well = wellArray{j};
         well_folder = fullfile(root, well);
 
         % Load data for this well (if it wasn't done already)
-        if ~isfield(allData, well)
-            allData = update_all_data(allData, well, well_folder, T, scale);
-        end
+        allData = update_all_data(allData, experiment, magnification,...
+                          well, well_folder, T, scale, network_specifier);
+
         disp(['Data loaded for well ', well])
 
        % well locations
 
-        xc = allData.(well).xc;
-        yc = allData.(well).yc;
-        diameter = allData.(well).diameter;
-
+        xc = allData.(experiment).(magnification).(well).xc;
+        yc = allData.(experiment).(magnification).(well).yc;
+        diameter = allData.(experiment).(magnification).(well).diameter;
 
         % Get data of current well
-        G = allData.(well).G;
-        xNodes = allData.(well).xNodes - xc; % set center of well to x=0
-        yNodes = yc - allData.(well).yNodes; % set center of well to y=0
+        G = allData.(experiment).(magnification).(well).G;
+        xNodes = allData.(experiment).(magnification).(well).xNodes - xc; % set center of well to x=0
+        yNodes = yc - allData.(experiment).(magnification).(well).yNodes; % set center of well to y=0
+        area = allData.(experiment).(magnification).(well).area;
 
         numNodes = numnodes(G);
+        conComp = conncomp(G);
+        sizeLargestGraph = sum( conComp == mode(conComp) );
+        connected(j) = sizeLargestGraph / numnodes(G);
 
         r = sqrt( (xNodes).^2 + (yNodes).^2 );
 
@@ -148,6 +154,7 @@ for i = 1:nGroups
 
         % Store parameters
         numCells(j) = numNodes;
+        confluency(j) = 4*sum(area) / (pi * diameter^2);
         meanDegree(j) = mean(dc);
         meanCloseness(j) = mean(cc);
         meanBetweenness(j) = mean(bc);
@@ -156,12 +163,14 @@ for i = 1:nGroups
     end
 
     groups(i).('NumCells') = numCells;
+    groups(i).('Confluency') = confluency;
     groups(i).('MeanDegree') = meanDegree;
     groups(i).('MeanCloseness') = meanCloseness;
     groups(i).('MeanBetweenness') = meanBetweenness;
     groups(i).('MeanR') = meanR;
     groups(i).('Density') = density;
     groups(i).('AvgPathLength') = meanD;
+   	groups(i).('Connected') = connected;
 
 end
 
@@ -170,11 +179,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 colors = {'b','r','b','r','b','r'};
 
-measures = {'NumCells', 'MeanDegree', 'MeanCloseness', 'MeanBetweenness', 'MeanR', 'Density', 'AvgPathLength'};
-%measures = {'NumCells', 'MeanDegree'};
-ylabels = {'Number of cells', 'Mean degree', 'Mean Closeness', 'Mean betweenness', 'Mean radial distance to center', 'Graph density', 'Average path length'};
-%ylabels = {'Number of cells', 'Mean number of neighbours'};
-onLogScale = {'NumCells', 'MeanBetweenness'};
+%measures = {'Confluency','NumCells', 'MeanDegree', 'MeanCloseness', 'MeanBetweenness', 'MeanR', 'Density', 'AvgPathLength'};
+measures = {'Connected', 'MeanDegree', 'MeanCloseness', 'MeanBetweenness', 'AvgPathLength'};
+%ylabels = {'Confluency', 'Number of cells', 'Mean degree', 'Mean Closeness', 'Mean betweenness', 'Mean radial distance to center', 'Graph density', 'Average path length'};
+ylabels = {'Size of main graph / |V|', 'Mean degree', 'Mean closeness', 'Mean betweenness', 'Average path length'};
+onLogScale = {'MeanBetweenness'};
 nMeasures = length(measures);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -212,7 +221,7 @@ if strcmp(plotting, 'barplot')
 
     set(gcf,'PaperOrientation','landscape');
     set(gcf,'Color','w','Units','inches','Position',[1 1 12 4])
-    figName = fullfile('Figures/AnalyzeGroups/',[experiment, '_', magnification, '_barplotGroups.pdf']);
+    figName = fullfile('Figures/Densities/',[experiment, '_', magnification, '_barplotGroups.pdf']);
     saveas(gcf, figName)        
 end
 
@@ -222,81 +231,89 @@ end
 
 if strcmp(plotting, 'scatterplot')
 
-    figure()
+    figure(1)
+    figure(2)
     colors = lines(nGroups);
 
     for i = 1:nGroups
         wellArray = groups(i).('Wells');
-        numCells = groups(i).NumCells;
-        meanNumCells = mean(numCells);
-        stdNumCells = std(numCells);
+        connected = groups(i).('Connected');
+        confluency = groups(i).Confluency;
+        meanConfluency = mean(confluency);
+        stdConfluency = std(confluency);
         c = colors(i,:);
 
-        for j = 2:nMeasures
-            subplot(2,floor(nMeasures/2),j-1)
+        for j = 1:nMeasures
+            figure(1)
+            subplot(2,ceil(nMeasures/2),j)
 
             measure = measures{j};
             data = groups(i).(measure);
 
-            errorbar(meanNumCells, mean(data), std(data), std(data),...
-                std(numCells), std(numCells), 's','Color',c, 'MarkerFaceColor',c);
+            errorbar(meanConfluency, mean(data), std(data), std(data),...
+                std(confluency), std(confluency), 's','Color','k', 'MarkerFaceColor','k');
             hold on
+            
         end
     end
 
-    for j = 2:nMeasures
+    for j = 1:nMeasures
         measure = measures{j};
-        subplot(2,floor(nMeasures/2),j-1)
+        figure(1)
+        subplot(2,ceil(nMeasures/2),j)
         set(gca, 'XScale', 'log')
         if any(strcmp(onLogScale, measure))
             set(gca, 'YScale', 'log')
         end
         ylabel(ylabels{j})
-        xlabel('Number of cells')
+        
+        if j==nMeasures
+            xlabel('Confluency')
+        end
     end
 
     set(gcf,'PaperOrientation','landscape');
-    set(gcf,'Color','w','Units','inches','Position',[1 1 12 6])
-    figName = fullfile('Figures/AnalyzeGroups/',[experiment, '_', magnification '_scatterplotGroups.png']);
+    set(gcf,'Color','w','Units','inches','Position',[1 1 6 4])
+    figName = fullfile('Figures/Densities/',[experiment, '_', magnification '_scatterplotGroups.png']);
     saveas(gcf, figName)
 
     %% plot one figure with most important measure
     figure()
 
-    measure = 'MeanDegree';
+    measure = 'AvgPathLength';
     c = 'r';
     maxY = 0;
     maxX = 0;
 
     for i = 1:nGroups
         wellArray = groups(i).('Wells');
-        numCells = groups(i).NumCells;
-        meanNumCells = mean(numCells);
-        stdNumCells = std(numCells);
+        numcells = groups(i).('NumCells');
+        confluency = groups(i).Confluency;
+        meanNumCells = mean(numcells);
+        meanConfluency = mean(confluency);
+        stdConfluency = std(confluency);
 
         data = groups(i).(measure);
 
-        errorbar(meanNumCells, mean(data), std(data), std(data),...
-            std(numCells), std(numCells), 's','Color',c, 'MarkerFaceColor',c);
+        errorbar(log(meanNumCells), mean(data), std(data), std(data),...
+            log(std(numcells)), log(std(numcells)), 's','Color',c, 'MarkerFaceColor',c);
         hold on
 
         if mean(data) > maxY
             maxY = mean(data);
         end
-        if meanNumCells > maxX
-            maxX = meanNumCells;
-        end
+
     end
 
-    set(gca, 'XScale', 'log');
-    xlabel('Number of cells')
-    ylabel('Mean number of neighbours')
+    %set(gca, 'XScale', 'log');
+    
+    xlabel('Num cells')
+    ylabel('AvgPathLength')
     ylim([0,maxY + 1])
-    xlim([0,maxX + 1e3])
 
     set(gcf,'PaperOrientation','landscape');
     set(gcf,'Color','w','Units','inches','Position',[1 1 6 4])
-    figName = fullfile('Figures/AnalyzeGroups/',[experiment, '_', magnification '_meanDegreeGroups.png']);
+    figName = fullfile('Figures/Densities/',[experiment, '_', magnification '_meanDegreeGroups.png']);
     saveas(gcf, figName)
 
 end % if plotting = 'scatterplot'
@@ -315,23 +332,8 @@ end
 
 function d = shortest_path_lengths(G)
     d = distances(G);
-    maxD = max(d(d~=inf));
-    d(d==inf) = maxD + 1;
+    %maxD = max(d(d~=inf));
+    %d(d==inf) = maxD + 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function nc = calculate_normalized_centrality(G, cName)
-    
-     c = centrality(G, cName);
-     N = numnodes(G);
-     
-     if strcmp(cName, 'closeness')
-         nc = c * (N - 1);
-     elseif strcmp(cName, 'betweenness')
-         nc = 2*c / ( (N-1)*(N-2) );
-     else
-         nc = c;
-     end
-
-end

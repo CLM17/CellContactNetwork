@@ -71,7 +71,7 @@ classdef Violin < handle
     end
 
     methods
-        function obj = Violin(data, pos, varargin)
+        function obj = Violin(data, bw, pos, varargin)
             %Violin plots a violin plot of some data at pos
             %   VIOLIN(DATA, POS) plots a violin at x-position POS for
             %   a vector of DATA points.
@@ -118,7 +118,9 @@ classdef Violin < handle
             if isempty(data)
                 return
             end
-            [density, value] = ksdensity(data, 'bandwidth', args.Bandwidth);
+            %obj.Bandwidth = args.Bandwidth;
+            %[density, value] = ksdensity(data, 'bandwidth', args.Bandwidth);
+            [density, value] = ksdensity(data, 'bandwidth', bw);
             density = density(value >= min(data) & value <= max(data));
             value = value(value >= min(data) & value <= max(data));
             value(1) = min(data);
@@ -236,7 +238,7 @@ classdef Violin < handle
                 obj.NotchPlots(2).MarkerFaceColor = color;
             end
         end
-
+                
         function color = get.BoxColor(obj)
             if ~isempty(obj.BoxPlot)
                 color = obj.BoxPlot.FaceColor;
