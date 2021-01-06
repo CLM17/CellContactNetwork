@@ -65,9 +65,9 @@ function simulate(x, experiment, magnification, well, network_specifier,...
         theta = atan2(yNodes, xNodes);
 
         % Fit a kernel and truncate
-        pdf_r = fitdist(r,'kernel');
-        pdf_r = truncate(pdf_r, 0, inf);
-        pdf_theta = fitdist(theta,'kernel');
+        pdf_r = fitdist(r,'kernel','Width',5);
+        pdf_r = truncate(pdf_r, 0, max(r));
+        pdf_theta = fitdist(theta,'kernel','Width',5);
         pdf_theta = truncate(pdf_theta, -pi, pi);
 
         % Generate random simulations with the same distribution

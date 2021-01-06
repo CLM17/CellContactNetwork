@@ -5,17 +5,28 @@ experiment = 'WKS024';
 magnification = 'M20';
 well = 'D02';
 description = '20201230';
+N = 2; % number of simulations
 
 %% ------------------------------START CODE--------------------------------
+
 root = fullfile('..','..','Experiments', experiment, magnification);
 well_folder = fullfile(root, well);
 
-Data = struct();
-for i = 1:N
-    nr = num2str(i);
-    load(fullfile(well_folder, [well,'_simulatedGraph_',description,'_',nr,'.mat']));
-    Data(i).(well).GSim.Graph = GSim;
+% Get simulated data
+simData = struct();
+for n = 1:N
+    nr = num2str(n-1);
+    data = load(fullfile(well_folder, [well,'_simulatedGraph_',description,'_',nr,'.mat']));
+    simData(n).GSim = data.GSim;
+    simData(n).xSim = data.xSim;
+    simData(n).ySim = data.ySim;
 end
+
+% Get observed graph
+obsData = struct;
+obsData.G = data.G;
+obsData.xNodes = data.xNodes;
+obsData.yNodes = data.yNodes;
 
 %% Calulcate centralities
 centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
@@ -23,63 +34,97 @@ nC = length(centralityNames);
 
 for i = 1:nC
     cName = centralityNames{i};
-    Data.(well).('G').(cName) = calculate_normalized_centrality(G, cName);
-    Data.(well).('GSim').(cName) = calculate_normalized_centrality(GSim, cName);
+    % observed data
+    obsData.(cName) = calculate_normalized_centrality(obsData.G, cName);
+    % simulated data
+    for n = 1:N
+        GSim = simData(n).GSim;
+        simData(n).(cName) = calculate_normalized_centrality(GSim, cName);
+    end
 end
 
-graphs = {'G', 'GSim'};
-for i = 1:length(graphs)
-    
-    graphName = graphs{i};
-    if strcmp(graphName, 'G')
-        Graph = G;
-    elseif strcmp(graphName, 'GSim')
-        Graph = GSim;
-    end
+%% Collect centralities of all simulations in 3 arrays
+simDegree = [];
+simCloseness = [];
+simBetweenness = [];
 
+for n = 1:N
+    simDegree = [simDegree; simData(n).degree];
+    simBetweenness = [simBetweenness; simData(n).betweenness];
+    simCloseness = [simCloseness; simData(n).closeness];
+end
+
+%% Assortativity, connectedness & avg path length
+
+% Observed
+
+% Connectedness
+conComp = conncomp(obsData.G);
+sizeLargestGraph = sum( conComp == mode(conComp) );
+% Avg path length
+d = distances(obsData.G);
+d(d==inf) = [];
+d(d==0) = [];
+% Assortativity
+flag = 0;
+
+obsData.assort = full(assortativity(adjacency(obsData.G), flag));
+obsData.connectedness = sizeLargestGraph / numnodes(obsData.G);
+obsData.avgPathLength = mean(d);
+
+% simulated
+
+for i = 1:N
+
+    GSim = simData(n).GSim;
     % Connectedness
-    conComp = conncomp(Graph);
+    conComp = conncomp(GSim);
     sizeLargestGraph = sum( conComp == mode(conComp) );
     % Avg path length
-    d = distances(Graph);
+    d = distances(GSim);
     d(d==inf) = [];
     d(d==0) = [];
     % Assortativity
     flag = 0;
 
-    Data.(well).(graphName).assort = full(assortativity(adjacency(GSim), flag));
-    Data.(well).(graphName).connectedness = sizeLargestGraph / numnodes(Graph);
-    Data.(well).(graphName).avgPathLength = mean(d);
+    simData(n).assort = full(assortativity(adjacency(GSim), flag));
+    simData(n).connectedness = sizeLargestGraph / numnodes(GSim);
+    simData(n).avgPathLength = mean(d);
 end
 
 %% Compare graph measures
 figure()
 
 subplot(1,3,1)
-data = [Data.(well).G.degree, Data.(well).GSim.degree];
-v = violinplot(data,1);
+plotDegree.observed = obsData.degree;
+plotDegree.simulated = simDegree;
+v = violinplot(plotDegree,1);
 for i = 1:2
     v(i).EdgeColor = [1,1,1];
     v(i).ShowData = false;
 end
-
+title('Degree')
 
 subplot(1,3,2)
-data = [Data.(well).G.closeness, Data.(well).GSim.closeness];
-v = violinplot(data, 0.0007);
+plotCloseness.observed = obsData.closeness;
+plotCloseness.simulated = simCloseness;
+v = violinplot(plotCloseness, 0.0007);
 for i = 1:2
     v(i).EdgeColor = [1,1,1];
     v(i).ShowData = false;
 end
+title('Closeness')
 
 subplot(1,3,3)
-data = [Data.(well).G.betweenness, Data.(well).GSim.betweenness];
-v = violinplot(data, 0.001);
+plotBetweenness.observed = obsData.betweenness;
+plotBetweenness.simulated = simBetweenness;
+v = violinplot(plotBetweenness, 0.001);
 for i = 1:2
     v(i).EdgeColor = [1,1,1];
     v(i).ShowData = false;
 end
 ylim([0,0.035])
+title('Betweenness')
 
 %%
 figure()
@@ -108,8 +153,8 @@ saveas(gcf, figName)
 figure()
 for i = 1:nC
     cName = centralityNames{i};
-    cObserved = Data.(well).('G').(cName);
-    cSimulated = Data.(well).('GSim').(cName);
+    cObserved = simData.(well).('G').(cName);
+    cSimulated = simData.(well).('GSim').(cName);
     
     subplot(3,nC,i)
     p1 = plot(G, 'XData', xNodes, 'YData', yNodes, 'markersize',2);
@@ -145,8 +190,8 @@ saveas(gcf, figName)
 
 %%
 N = numnodes(G);
-bco = Data.(well).('G').('betweenness') * 2 / ((N-1)*(N-2));
-bcs = Data.(well).('GSim').('betweenness') * 2 / ((N-1)*(N-2));
+bco = simData.(well).('G').('betweenness') * 2 / ((N-1)*(N-2));
+bcs = simData.(well).('GSim').('betweenness') * 2 / ((N-1)*(N-2));
 
 figure()
 
@@ -212,7 +257,29 @@ distSimE = sqrt( (Xsim-Xsim').^2 + (Ysim-Ysim').^2 ) .* Asim;
 %%
 [h,p] = kstest2(full(distE(distE>0)), full(distSimE(distSimE>0)));
 
+%%
+xSim = data.xSim;
+ySim = data.ySim;
+xNodes = data.xNodes;
+yNodes = data.yNodes;
 
+rObs = sqrt(xNodes.^2 + yNodes.^2);
+rSim = sqrt(xSim.^2 + ySim.^2);
+
+[h,p] = kstest2(rObs, rSim);
+%%
+nNodes = numnodes(data.G);
+pdf_r = fitdist(rObs,'kernel','Width',5);
+pdf_r = truncate(pdf_r, 0, max(rObs));
+
+rSim = random(pdf_r, nNodes, 1);
+[h,p] = kstest2(rObs, rSim);
+disp(h)
+
+figure()
+histogram(rObs)
+hold on
+histogram(rSim)
 %% Plot subgraphs
 
 %% 
