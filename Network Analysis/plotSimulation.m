@@ -29,7 +29,7 @@ obsData.xNodes = data.xNodes;
 obsData.yNodes = data.yNodes;
 
 %% Calulcate centralities
-centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
+centralityNames = {'degree', 'closeness', 'betweenness'};
 nC = length(centralityNames);
 
 for i = 1:nC
@@ -92,10 +92,33 @@ for i = 1:N
     simData(n).avgPathLength = mean(d);
 end
 
+
+
 %% Compare graph measures
 figure()
 
-subplot(1,3,1)
+ GSim = simData(1).GSim;
+ xSim = simData(1).xSim;
+ ySim = simData(1).ySim;
+for i = 1:nC 
+    cName = centralityNames{i};
+   
+    subplot(2,3,i)
+    p1 = plot(GSim, 'XData', xSim, 'YData', ySim, 'markersize',2);
+    p1.NodeCData = simData(1).(cName);
+    h = colorbar('location','NorthOutside');
+    h.Label.String = ['Simulated ',cName];
+
+    colormap jet
+    xticks([-4e3,0,4e3])
+    yticks([-4e3,0,4e3])
+    xticklabels({'-4','0','4'})
+    yticklabels({'-4','0','4'})
+    xlabel('x (mm)')
+    ylabel('y (mm)')
+end
+
+subplot(2,3,4)
 plotDegree.observed = obsData.degree;
 plotDegree.simulated = simDegree;
 v = violinplot(plotDegree,1);
@@ -103,9 +126,9 @@ for i = 1:2
     v(i).EdgeColor = [1,1,1];
     v(i).ShowData = false;
 end
-title('Degree')
+ylabel('Degree centrality')
 
-subplot(1,3,2)
+subplot(2,3,5)
 plotCloseness.observed = obsData.closeness;
 plotCloseness.simulated = simCloseness;
 v = violinplot(plotCloseness, 0.0007);
@@ -113,9 +136,9 @@ for i = 1:2
     v(i).EdgeColor = [1,1,1];
     v(i).ShowData = false;
 end
-title('Closeness')
+ylabel('Closeness centrality')
 
-subplot(1,3,3)
+subplot(2,3,6)
 plotBetweenness.observed = obsData.betweenness;
 plotBetweenness.simulated = simBetweenness;
 v = violinplot(plotBetweenness, 0.001);
@@ -123,14 +146,37 @@ for i = 1:2
     v(i).EdgeColor = [1,1,1];
     v(i).ShowData = false;
 end
-ylim([0,0.035])
-title('Betweenness')
+ylim([0,0.05])
+ylabel('Betweenness centrality')
 
-%%
+set(gcf,'PaperOrientation','landscape');
+set(gcf,'Color','w','Units','inches','Position',[1 1 10 7.5])
+figName = fullfile('Figures/Simulations/',[experiment, '_', well, '_violinplots.png']);
+saveas(gcf, figName)
+
+%% Fit power law on simulated betweenness centrality
+
+nBins = 60;
+bcSim = simData(1).betweenness;
+
+% Fit on betweenness centrality
+[hc, binEdges] = histcounts(bcSim, 'NumBins', nBins, 'Normalization', 'probability');
+binCenters = (binEdges(2:end) + binEdges(1:end-1) ) / 2;
+
+F = @(a,xdata)a(1)*xdata.^(-a(2));
+a0 = [1,1];
+[a,resnorm,~,exitflag,output] = lsqcurvefit(F,a0,binCenters,hc);
+
+xmin = 0;
+xmax = max(bcSim);
+xaxis = linspace(xmin, xmax, 1000);
+% pd = fitdist(bc, 'exponential');
+% y = pdf(pd, xaxis);
 figure()
-boxplot(data)
-set(gca, 'YScale', 'log')
-
+histogram(bcSim, nBins,'Normalization','probability', 'LineStyle', 'none')
+hold on
+plot(xaxis, F(a, xaxis), '-k', 'LineWidth', 1)
+set(gca, 'YScale', 'log','XScale', 'log')
 
 %% Plot distributions
 figure()
