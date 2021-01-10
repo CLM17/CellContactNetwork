@@ -85,7 +85,7 @@ for (m = 0; m < wellList.length; m++) {
 	areaTubulin = getResult("%Area", nResults-1) * area / 100;
 	close(well + "_th_atubulin.tif");
 	
-	results = "Num nuclei = " + d2s(numNuclei,0) + "\n" + "Num neurons = " + d2s(numNeurons,0) + "\n" + "Area MAP2 = " + d2s(areaMAP2,0) + "\n" + "Area aTUB = " + d2s(areaTubulin,0);
+	results = "Num nuclei = " + d2s(numNuclei,0) + "," + "Num neurons = " + d2s(numNeurons,0) + "," + "Area MAP2 = " + d2s(areaMAP2,0) + "," + "Area aTUB = " + d2s(areaTubulin,0);
 	print(results);
 	
 	File.saveString(results, wellFolder + "\\" + well + "_neuronMeasurements.txt"); 
