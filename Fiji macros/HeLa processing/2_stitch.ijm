@@ -384,11 +384,14 @@ if(stitch_th){
 	
 		// Let the user choose a name for this channel
 		// The computer suggests a name based on the channel nr.
-		if(c%2 == 0){
+		if(c == 0){
 			suggestedName = "dapi";
 		}
+		else if(c == 1){
+			suggestedName = "map2";
+		}
 		else{
-			suggestedName = "phalloidin";
+			suggestedName = "atubulin";
 		}
 		
 		// Ask the user if they are happy with the tiles
