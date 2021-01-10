@@ -134,13 +134,13 @@ end
 figure(1)
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 8 6])
-figName = fullfile('Figures/Morphologies/',[magnification,'_meanRadialPos.pdf']);
+figName = fullfile('Figures/Morphologies/',[magnification,'_meanRadialPos.png']);
 saveas(gcf, figName)
 
 figure(2)
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 8 6])
-figName = fullfile('Figures/Morphologies/',[magnification,'_meanAngularPos.pdf']);
+figName = fullfile('Figures/Morphologies/',[magnification,'_meanAngularPos.png']);
 saveas(gcf, figName)
 
 %% Plot morphology distribitions

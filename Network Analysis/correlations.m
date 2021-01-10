@@ -1,10 +1,10 @@
 close all
 
-experiment = 'JJ005';
-magnification = '20x';
-well = 'C02';
+experiment = 'WKS024';
+magnification = 'M20';
+well = 'D02';
 fieldSize = 1104;
-network_specifier = '';
+network_specifier = '_ml';
 
 %% ------------------------------START CODE--------------------------------
 
@@ -24,24 +24,25 @@ end
 
 if ~isfield(allData, well)
     scale = calculate_scale(magnification, fieldSize);
-    allData = update_all_data(allData, well, well_folder, T, scale, network_specifier);
+    allData = update_all_data(allData, experiment, magnification,...
+                              well, well_folder, T, scale, network_specifier);
 end
 disp('All data loaded.')
 
 % Get data of current well
-measurementNames = allData.measurementNames;
-G = allData.(well).G;
-xNodes = allData.(well).xNodes;
-yNodes = allData.(well).yNodes;
+measurementNames = {'area', 'circularity'};
+G = allData.(experiment).(magnification).(well).G;
+xNodes = allData.(experiment).(magnification).(well).xNodes;
+yNodes = allData.(experiment).(magnification).(well).yNodes;
 
 % well locations
-xc = allData.(well).xc;
-yc = allData.(well).yc;
-diameter = allData.(well).diameter;
+xc = allData.(experiment).(magnification).(well).xc;
+yc = allData.(experiment).(magnification).(well).yc;
+diameter = allData.(experiment).(magnification).(well).diameter;
 
 %% Calulcate centralities
 Centralities = struct();
-centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
+centralityNames = {'degree', 'betweenness', 'closeness'};
 nC = length(centralityNames);
 
 %% Calculate centralities
@@ -58,7 +59,7 @@ nM = length(measurementNames);
 for i = 1:nM
     
     mName = measurementNames{i};
-    m = allData.(well).(mName);
+    m = allData.(experiment).(magnification).(well).(mName);
     
     for j = 1:nC
         count = count + 1;
@@ -72,17 +73,17 @@ for i = 1:nM
         b2 = mdl.Coefficients.Estimate(2);
         R2 = mdl.Rsquared.Ordinary;
 
-        subplot(3, nC, count)
+        subplot(nM, nC, count)
         plot(m, c, '.', m, b1 + b2*m, '-r')
         xlabel(mName)
         ylabel(cName)
-        title(['R^2 = ', num2str(R2)])
+        title(sprintf('R^2 = %.2f', R2))
     end
 end
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
-figName = fullfile('Figures/',[experiment, '_', magnification, '_', well,'_measurementCentralityCorrelations.png']);
+set(gcf,'Color','w','Units','inches','Position',[1 1 12 6])
+figName = fullfile('Figures/Correlations',[experiment, '_', magnification, '_', well,'_measurementCentralityCorrelations.png']);
 saveas(gcf, figName)
 
 %% Plot all measurements
@@ -91,13 +92,13 @@ count = 0;
 for i = 1:nM
     
     mName1 = measurementNames{i};
-    m1 = allData.(well).(mName1);
+    m1 = allData.(experiment).(magnification).(well).(mName1);
     
     for j = 1:nM
         count = count + 1;
         
         mName2 = measurementNames{j};
-        m2 = allData.(well).(mName2);
+        m2 = allData.(experiment).(magnification).(well).(mName2);
 
         % fit linear model c = b1 + b2*m
         mdl = fitlm(m1, m2);
@@ -109,13 +110,13 @@ for i = 1:nM
         plot(m1, m2, '.', m1, b1 + b2*m1, '-r')
         xlabel(mName1)
         ylabel(mName2)
-        title(['R^2 = ', num2str(R2)])
+        title(sprintf('R^2 = %.2f', R2))
     end
 end
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
-figName = fullfile('Figures/',[experiment, '_', magnification, '_', well,'_measurementCorrelations.png']);
+set(gcf,'Color','w','Units','inches','Position',[1 1 8 6])
+figName = fullfile('Figures/Correlations',[experiment, '_', magnification, '_', well,'_measurementCorrelations.png']);
 saveas(gcf, figName)
 
 %% Plot all centralities
@@ -140,12 +141,12 @@ for i = 1:nC
         plot(c1, c2, '.', c1, b1 + b2*c1, '-r')
         xlabel(cName1)
         ylabel(cName2)
-        title(['R^2 = ', num2str(R2)])
+        title(sprintf('R^2 = %.2f', R2))
         
     end
 end
 
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 12 9])
-figName = fullfile('Figures/',[experiment, '_', magnification, '_', well,'_centralityCorrelations.png']);
+figName = fullfile('Figures/Correlations',[experiment, '_', magnification, '_', well,'_centralityCorrelations.png']);
 saveas(gcf, figName)

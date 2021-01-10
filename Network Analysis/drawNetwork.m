@@ -7,15 +7,15 @@ close all
 %% --------------------------SPECIFY PARAMETERS----------------------------
 
 experiment = 'WKS024';
-magnification = 'M20';
-well = 'D02';               % well name
-network_specifier = '_ml';
-nodeData = 'degree';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
-nodeSize = 7;               % node size
+magnification = 'M10';
+well = 'C07';               % well name
+network_specifier = '';
+nodeData = '';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
+nodeSize = 2;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
-lineWidth = 1.5;              % thickness of edges (= lines)
+lineWidth = 1;              % thickness of edges (= lines)
 edgeColor = 'w';            % color of edges ('w'=white, 'k'=black, 'g'=green, etc)
-edgeTransparency = 0.5;     % transparency of edges (0=fully transparent, 1=not transparent)
+edgeTransparency = 0.8;     % transparency of edges (0=fully transparent, 1=not transparent)
 qualityCheck = false;
 
 %% ------------------------------START CODE--------------------------------
@@ -70,7 +70,7 @@ centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvecto
 if (ismember(nodeData, centralityNames) && ...
         ~isfield(allData.(experiment).(magnification).(well), nodeData))
     data = centrality(G, nodeData);
-    allData.(experiment).(magnification).(well).(nodeData) = data==12;
+    allData.(experiment).(magnification).(well).(nodeData) = data;
 end
 
 % Draw graph as network & save the file
@@ -97,7 +97,7 @@ end
 % colors(bc > 0.1,:) = repmat([0,1,0], sum(bc>0.1), 1);
 % p.NodeColor = colors;
 
-saveas(gcf, fullfile('Figures', 'FullNetworks',[well,'_network.tif']))
+saveas(gcf, fullfile('Figures/FullNetworks',[experiment,'_',magnification,'_',well,'_network_',nodeData,'.tif']))
 
 %% Quality check
 
