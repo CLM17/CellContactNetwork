@@ -11,7 +11,7 @@
 //
 // OUTPUTS
 //--------- 
-
+//
 //		1) One RGB image called <well>_fused_RGB.tif.
 // 		This is the fused image converted to RGB. It is used by Matlab to draw the network on.
 //
@@ -33,9 +33,9 @@ close("*")
 #@ String (label="Names of the thresholded channels") chNamesString
 
 // Specify the thresholds tile folder as tilefolder.
-wellFolder = root + "\\" + well;
-tileFolder = wellFolder + "\\tiles\\thresholds";
-textFileConfigurations = wellFolder + "\\tiles\\TileConfiguration.txt";
+wellFolder = root + "/" + well;
+tileFolder = wellFolder + "/tiles/thresholds";
+textFileConfigurations = wellFolder + "/tiles/TileConfiguration.txt";
 print(tileFolder);
 
 // Check if the thresholded imgages exist.
@@ -110,7 +110,7 @@ roiManager("Select", 0);
 run("Clear Outside");
 
 // Save the RGB color. Will later be used by Matlab to draw the network on.
-saveAs(root+"\\"+well+"\\"+well+"_fused_RGB.tif");
+saveAs(root+"/"+well+"/"+well+"_fused_RGB.tif");
 //close();
 
 // Clear the outside of the well for boundary image, if it exists
