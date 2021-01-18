@@ -8,17 +8,20 @@ fieldSize = 1104;
 %% Calculate scale in um/pixels
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 scale = calculate_scale(magnification, fieldSize);
+allData = struct;
 
 %% Plot positions  (mean for all wells)
 green = [108,186,116] / 255;
 pink = [144, 108, 186] / 255;
 yellow = [250,255,164] / 255;
-allData = struct;
+close all
 
 colorHela = green;
 colorCos = pink;
 
 experiments = {'JJ005', 'WKS024'};
+subplotRad = [1,3];
+subplotAngle = [2,4];
 
 figure()
 for e = 1:2
@@ -61,8 +64,8 @@ for e = 1:2
 
         well = wellList{w};
         well_folder = fullfile(root, well);
-        allData = update_all_data(allData, experiment, magnification,...
-                              well, well_folder, T, scale, network_specifier);
+        %allData = update_all_data(allData, experiment, magnification,...
+        %                      well, well_folder, T, scale, network_specifier);
         
         % well locations
         xc = allData.(experiment).(magnification).(well).xc;
@@ -103,7 +106,7 @@ for e = 1:2
     
     colorCell = {color,color};
     figure(1)
-    subplot(2,1,e)
+    subplot(2,2,subplotRad(e))
     yscale = 'default';
     plot_shady_error(rBinCenters', rDensityMean', rDensityStd', colorCell, yscale)
     ylim([0,5.5e-4])
@@ -114,8 +117,8 @@ for e = 1:2
     end
     legend(leg)
 
-    figure(2)
-    subplot(2,1,e)
+    %figure(2)
+    subplot(2,2,subplotAngle(e))
     orange = [243,146,0] / 255;
     color = {orange, 'r'};
     yscale = 'default';
@@ -124,24 +127,25 @@ for e = 1:2
     ylim([0,6e-4])
     xticks([-pi/2,0,pi/2])
     xticklabels({'-\pi/2','0','\pi/2'})
-    ylabel('Density (cells \mum^{-2})')
-    legend(leg)
+    %ylabel('Density (cells \mum^{-2})')
+    %legend(leg)
     if e==2
         xlabel('Angular position (radians)')
     end
 end
 
+%%
 figure(1)
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 8 6])
-figName = fullfile('Figures/Morphologies/',[magnification,'_meanRadialPos.png']);
+set(gcf,'Color','w','Units','inches','Position',[1 1 10 6])
+figName = fullfile('Figures/Morphologies/',[magnification,'_meanRadialPos.pdf']);
 saveas(gcf, figName)
 
-figure(2)
-set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 8 6])
-figName = fullfile('Figures/Morphologies/',[magnification,'_meanAngularPos.png']);
-saveas(gcf, figName)
+% figure(2)
+% set(gcf,'PaperOrientation','landscape');
+% set(gcf,'Color','w','Units','inches','Position',[1 1 8 6])
+% figName = fullfile('Figures/Morphologies/',[magnification,'_meanAngularPos.png']);
+% saveas(gcf, figName)
 
 %% Plot morphology distribitions
 allAreas = struct;

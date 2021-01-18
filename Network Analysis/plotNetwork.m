@@ -20,6 +20,14 @@ qualityCheck = false;
 
 %% ------------------------------START CODE--------------------------------
 
+green = [108,186,116] / 255;
+pink = [144, 108, 186] / 255;
+yellow = [250,255,164] / 255;
+close all
+
+colorHela = green;
+colorCos = pink;
+
 % Load image and graph if this wasn't done already
 root = fullfile('..','..','Experiments',experiment,magnification);
 %root = 'M:\tnw\bn\dm\Shared\Kasper\PhD\MinimalCellCultures\Experiments_and_Analysis\Experiments\WKS024\10x';
@@ -52,9 +60,10 @@ end
 % Get image and graph of current well
 measurementNames = allData.measurementNames;
 G = allData.(experiment).(magnification).(well).G;
-xNodes = allData.(experiment).(magnification).(well).xNodes;
-yNodes = allData.(experiment).(magnification).(well).yNodes;
-n = numnodes(G);
+xc = allData.(experiment).(magnification).(well).xc;
+yc = allData.(experiment).(magnification).(well).yc;
+xNodes = allData.(experiment).(magnification).(well).xNodes - xc; % set center of well to x=0
+yNodes = yc - allData.(experiment).(magnification).(well).yNodes; % set center of well to y=0n = numnodes(G);
 
 % Calculate centrality if the user asked for it
 centralityNames = {'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'};
@@ -67,13 +76,15 @@ end
 % Draw graph as network & save the file
 figure()
 
-p = plot(G, 'XData', xNodes, 'YData', yNodes, ...
-    'NodeColor', nodeColor,...
-    'MarkerSize',nodeSize,...
-    'NodeLabel',{},...
-    'LineWidth',lineWidth,...
-    'EdgeColor',edgeColor,...
-    'EdgeAlpha',edgeTransparency);
+% p = plot(G, 'XData', xNodes, 'YData', yNodes, ...
+%     'NodeColor', nodeColor,...
+%     'MarkerSize',nodeSize,...
+%     'NodeLabel',{},...
+%     'LineWidth',lineWidth,...
+%     'EdgeColor',edgeColor,...
+%     'EdgeAlpha',edgeTransparency);
+
+plot(xNodes, yNodes, '.', 'Color', colorHela, 'MarkerSize', 5)
 
 if ismember(nodeData, centralityNames) || ismember(nodeData, measurementNames)
     rgb = vals2colormap(allData.(experiment).(magnification).(well).(nodeData));
@@ -86,8 +97,8 @@ end
 % p.NodeColor = colors;
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 12 12 ])
-saveas(gcf, fullfile('Figures', 'FullNetworks',[well,'_network_only.tif']))
+set(gcf,'Color','w','Units','inches','Position',[1 1 6 6 ])
+saveas(gcf, fullfile('Figures', 'FullNetworks',[experiment, '_', well,'_positions_only.pdf']))
 
 %% Quality check
 

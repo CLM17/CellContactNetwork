@@ -94,7 +94,7 @@ for i = 1:nGroups
 
         % Store parameters
         numCells(j) = numNodes;
-        confluency(j) = 4*sum(area) / (pi * diameter^2);
+        confluency(j) = 100 * 4*sum(area) / (pi * diameter^2);
         meanDegree(j) = mean(dc);
         meanCloseness(j) = mean(cc);
         meanBetweenness(j) = mean(bc);
@@ -235,7 +235,7 @@ for i = 1:nGroups
     hold on
     
     figure(4)
-    subplot(2,1,2)
+    subplot(1,2,2)
     errorbar(mean(confluency), mean(pearson), std(pearson), std(pearson), ...
              std(confluency), std(confluency), 's','Color',colorHela, 'MarkerFaceColor',colorHela);
     hold on
@@ -250,27 +250,36 @@ end
 
 figure(1)
 subplot(2,2,4) % Degree vs confluency
-xlabel('Confluency')
+xlabel('Confluency (%)')
 ylabel('Mean degree')
+xticks([1,10,100])
+xticklabels({'1', '10', '100'})
 set(gca, 'XScale', 'log')
+
 
 figure(3)
 subplot(2,2,4) % Closeness vs confluency
-xlabel('Confluency')
+xlabel('Confluency (%)')
 ylabel('Mean closeness')
+xticks([1,10,100])
+xticklabels({'1', '10', '100'})
 set(gca, 'XScale', 'log')
 
 figure(4)
-subplot(2,1,2)
-plot([1e-2,1],[0,0], '--k', 'LineWidth', 1)
-xlabel('Confluency')
+subplot(1,2,2)
+plot([1,100],[0,0], '--k', 'LineWidth', 1)
+xlabel('Confluency (%)')
+xticks([1,10,100])
+xticklabels({'1', '10', '100'})
 ylabel('Mean correlation')
 set(gca, 'XScale', 'log')
 
 figure(5) % Betweenness vs confluency
 subplot(2,2,4)
-xlabel('Confluency')
+xlabel('Confluency (%)')
 ylabel('Mean betweenness')
+xticks([1,10,100])
+xticklabels({'1', '10', '100'})
 set(gca, 'XScale', 'log')
 set(gca, 'YScale', 'log')
 
@@ -400,7 +409,7 @@ ylabel(sprintf('$\\bar{A_n} / \\bar{A}$'), 'interpreter', 'latex')
 
 set(gcf,'PaperOrientation','landscape');
 set(gcf,'Color','w','Units','inches','Position',[1 1 5 4])
-figName = fullfile('Figures/Centralities/', 'AV_lewis.pdf');
+figName = fullfile('Figures/Centralities/', 'AV_lewis.png');
 saveas(gcf, figName)
 
 figure(3) % Closeness
@@ -450,7 +459,7 @@ figName = fullfile('Figures/Centralities/','closeness.png');
 saveas(gcf, figName)
 
 figure(4) % closeness versus radial distance
-subplot(2,1,1)
+subplot(1,2,1)
 plot(r,cc,'.', 'Color', colorHela)
 hold on
 plot(r, c1 + c2*r, '-k', 'LineWidth', 1.5)
@@ -461,11 +470,14 @@ xlim([0,max(r)])
 %leg = legend('HeLa', 'Linear fit', 'Location', 'SouthWest');
 %leg.ItemTokenSize = [15, 1];
 
+%%
+figure(4) % closeness versus radial distance
+
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 5 4])
+set(gcf,'Color','w','Units','inches','Position',[1 1 9 2.5])
 figName = fullfile('Figures/Centralities/','closeness_vs_r.png');
 saveas(gcf, figName)
-
+%%
 figure(5) % betweenness
 
 bc = allData.(experiment).(magnification).D02.betweenness;

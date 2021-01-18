@@ -107,15 +107,15 @@ for e = 2:2
             clusteringCoefficient.(experiment).mean(g,w) = sum( clustering_coef_bu(A) ) / N;
             assort.(experiment).mean(g,w) = assortativity(A,flag);
             largestGraph.(experiment).mean(g,w) = sizeLargestGraph / N;
-            confluency.(experiment)(g,w) = 4*sum(area) / (pi * diameter^2);
+            confluency.(experiment)(g,w) = 100* 4*sum(area) / (pi * diameter^2);
             numNodes.(experiment)(g,w) = N;
         end
     end
 end
 
-%% Plot result
-numPlots = 3;
 
+%% Plot result
+numPlots = 4;
 
 figure()
 for e = 2:2
@@ -140,7 +140,7 @@ for e = 2:2
     
     maxAvgPathLentgh = 0;
     maxLogMeanN = 0;
-    h = zeros(1,2);
+    h = gobjects(1,2);
     
     for g=1:nGroups
         meanAvgPathLength = mean(avgPathLength.(experiment).mean(g,:));
@@ -156,6 +156,9 @@ for e = 2:2
         meanN = mean(numNodes.(experiment)(g,:));
     	meanConfluency = mean(confluency.(experiment)(g,:));
         
+        allmeanN(g) = meanN;
+        allmeanConfluency(g) = meanConfluency;
+        
         stdN = std(numNodes.(experiment)(g,:));
     	stdConfluency = std(confluency.(experiment)(g,:));
 
@@ -166,27 +169,34 @@ for e = 2:2
             maxLogMeanN = log(meanN);
         end
         
-        subplot(numPlots,1,1)
+        subplot(2,2,1)
+        errorbar(meanConfluency, meanN, ...
+                 stdN, stdN, ... 
+                 stdConfluency, stdConfluency, ...
+                 's','Color',color, 'MarkerFaceColor',color,'MarkerSize', 5);
+        hold on
+        
+        subplot(2,2,2)
         errorbar(meanConfluency, meanLargestGraph, ...
                  stdLargestGraph, stdLargestGraph, ... 
                  stdConfluency, stdConfluency, ...
-                 's','Color',color, 'MarkerFaceColor',color);
+                 's','Color',color, 'MarkerFaceColor',color,'MarkerSize', 5);
         hold on
             
-        subplot(numPlots,1,2)
+        subplot(2,2,3)
         h(1) = plot(log(numNodes.(experiment)(g,:)), avgPathLength.(experiment).mean(g,:),...
-             's','Color',color,'MarkerFaceColor',color);
+             '.','Color',color,'MarkerFaceColor',color, 'MarkerSize', 15);
         %errorbar(log(meanN), meanAvgPathLength, ...
         %         stdAvgPathLength, stdAvgPathLength, ... 
         %         log(stdN), log(stdN), ...
         %        's','Color',color, 'MarkerFaceColor',color);
         hold on
 
-        subplot(numPlots,1,3)
+        subplot(2,2,4)
         errorbar(meanConfluency, meanCC, ...
                  stdCC, stdCC, ... 
                  stdConfluency, stdConfluency, ...
-                 's','Color',color, 'MarkerFaceColor',color);
+                 's','Color',color, 'MarkerFaceColor',color,'MarkerSize', 5);
         hold on
         
         
@@ -201,26 +211,51 @@ for e = 2:2
     minX = 5;
     maxX = 9.5;
     
-    subplot(numPlots,1,1)
-    xlabel('Confluency')
+    minN = 100;
+    maxN = 3e4;
+    nAxis = [minN, maxN];
+    
+    minC = 2e-2;
+    maxC = 1;
+    cAxis = [minC,maxC];
+    
+    % fit linear model
+    %[c1, c2, R2] = fit_linear_model(allmeanConfluency, allmeanN);
+    
+    subplot(2,2,1)
+    %plot(cAxis, c1 + c2*cAxis, '-k','LineWidth', 1)
+    xlabel('Confluency (%)')
+	ylabel('Mean number of cells')
+    set(gca, 'XScale', 'log', 'YScale', 'log')
+    xticks([1,10,100])
+    xticklabels({'1', '10', '100'})
+    ylim(nAxis)
+    %xlim([])
+    
+    subplot(2,2,2)
+    xlabel('Confluency (%)')
 	ylabel('Mean connectedness')
     set(gca, 'XScale', 'log')
+    xticks([1,10,100])
+    xticklabels({'1', '10', '100'})
     ylim([-0.05,1.1])
     
-    subplot(numPlots,1,2)
+    subplot(2,2,3)
     h(2) = plot(minX:0.1:maxX, minX:0.1:maxX, '--r', 'LineWidth', 1);
     xlabel('ln(N)')
     ylabel('Average path length')
     xlim([minX,maxX])
     ylim([-1,65])
-    lgnd = legend(h,'HeLa', 'Random graph', 'Location', 'NorthWest');
+    lgnd = legend(h, {'HeLa', 'Random graph'}, 'Location', 'NorthWest');
     lgnd.ItemTokenSize = [7, 1];
     %set(gca, 'XScale', 'log')
     
-    subplot(numPlots,1,3)
-    xlabel('Confluency')
+    subplot(2,2,4)
+    xlabel('Confluency (%)')
     ylabel('Mean clustering coefficient')
     set(gca, 'XScale', 'log')
+    xticks([1,10,100])
+    xticklabels({'1', '10', '100'})
     ylim([0,0.45]);
     
     
@@ -233,6 +268,14 @@ for e = 2:2
 end
 
 %set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 4.5 7])
+set(gcf,'Color','w','Units','inches','Position',[1 1 8 5])
 figName = fullfile('Figures/Topologies/',[experiment, '_', magnification, '_topologies.pdf']);
 saveas(gcf, figName)  
+
+function [c1, c2, R2] = fit_linear_model(x, y)
+
+    mdl = fitlm(x,y);
+    c1 = mdl.Coefficients.Estimate(1);
+    c2 = mdl.Coefficients.Estimate(2);
+    R2 = mdl.Rsquared.Ordinary;
+end

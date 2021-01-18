@@ -7,13 +7,13 @@ close all
 %% --------------------------SPECIFY PARAMETERS----------------------------
 
 experiment = 'WKS024';
-magnification = 'M10';
-well = 'C07';               % well name
-network_specifier = '';
+magnification = 'M20';
+well = 'D02';               % well name
+network_specifier = '_ml';
 nodeData = '';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
-nodeSize = 2;               % node size
+nodeSize = 3;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
-lineWidth = 1;              % thickness of edges (= lines)
+lineWidth = 2;              % thickness of edges (= lines)
 edgeColor = 'w';            % color of edges ('w'=white, 'k'=black, 'g'=green, etc)
 edgeTransparency = 0.8;     % transparency of edges (0=fully transparent, 1=not transparent)
 qualityCheck = false;

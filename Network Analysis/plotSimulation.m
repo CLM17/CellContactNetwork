@@ -4,8 +4,8 @@ addpath('BrainConnectivity')
 experiment = 'WKS024';
 magnification = 'M20';
 well = 'D02';
-description = '20201230';
-N = 2; % number of simulations
+description = '20210106_simulatepos';
+N = 10; % number of simulations
 
 %% ------------------------------START CODE--------------------------------
 

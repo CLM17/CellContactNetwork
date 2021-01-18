@@ -1,3 +1,5 @@
+close all
+clear all
 
 
 orange = [243,146,0] / 255;
@@ -13,6 +15,7 @@ network_specifier = '_ml';
 %% ----------------------------- Load data --------------------------------
 
 load('bayesianAnalysis.mat');
+magnification = 'M20';
 
 root = fullfile('..','..','Experiments',experiment,magnification);
 well_folder = fullfile(root, well);
@@ -35,7 +38,8 @@ if ~exist('T','var')
     T = readtable(xlsfileName);
 end
 
-scale = 1; % Do not convert pixels to um
+scale = calculate_scale(magnification, fieldSize); % Do not convert pixels to um
+disp(scale)
 if ~isfield(allData.(experiment).(magnification), well)
     disp(['Loading the graph of well ', well, '...'])
     allData = update_all_data(allData, experiment, magnification,...
@@ -58,7 +62,7 @@ diameter = allData.(experiment).(magnification).(well).diameter;
 %% -------------------------------- Plot ----------------------------------
 
 figure()
-subplot(2,1,1)
+%subplot(2,1,1)
 [hDistances, eDistances] = histcounts(distances);
 [hExistingEdgeLength, eExistingEdgeLength] = histcounts(existingEdgeLength);
 %bar(bin_centers(eDistances), hDistances / max(hDistances), ...
@@ -79,28 +83,36 @@ fill([centersEdge,fliplr(centersEdge)],...
      orange, 'FaceAlpha', 0.5,  'edgeColor', orange)
 
 set(gca, 'XScale', 'log')
-ylim([0,1.1])
-xlim([0, 16000])
+ylim([0,1.4])
+xlim([min(existingEdgeLength), 16000])
 
 ylabel('Frequency / max frequency')
 xlabel('Distance (\mum)')
 leg = legend('Distances between all cells', 'Distances between connected cells', 'Location', 'NorthWest');
 
-subplot(2,1,2)
+set(gcf,'PaperOrientation','landscape');
+set(gcf,'Color','w','Units','inches','Position',[1 1 6 2.5])
+figName = fullfile('Figures/Bayes',[well,'observedDistributions.pdf']);
+saveas(gcf, figName)
+
+%%
+
+figure()
+%subplot(2,1,2)
 plot(pConnect, '-', 'LineWidth', 1.5, 'Color', orange)
 hold on
-maxDist = dAxis(pConnect == max(pConnect));
-line([maxDist, maxDist], [0,max(pConnect)],'LineStyle', '--', 'Color', 'k','LineWidth',2);
-line([0, maxDist], [max(pConnect),max(pConnect)],'LineStyle', '--', 'Color', 'k','LineWidth',2);
+%maxDist = dAxis(pConnect == max(pConnect));
+%line([maxDist, maxDist], [0,max(pConnect)],'LineStyle', '--', 'Color', 'k','LineWidth',2);
+%line([0, maxDist], [max(pConnect),max(pConnect)],'LineStyle', '--', 'Color', 'k','LineWidth',2);
 
-xlim([0,150])
+xlim([0,250])
 ylim([0,1.1])
 xlabel('Distance, d_{ij} (\mum)')
 ylabel('Probability of connection')
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 12.5 6])
-figName = fullfile('Figures/Bayes',[well,'_bayesianAnalysis.png']);
+set(gcf,'Color','w','Units','inches','Position',[1 1 6 2.5])
+figName = fullfile('Figures/Bayes',[well,'inferredDistribution.pdf']);
 saveas(gcf, figName)
 
 function centers = bin_centers(edges)

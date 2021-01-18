@@ -31,7 +31,7 @@ if ~exist('T','var')
     T = readtable(xlsfileName);
 end
 
-scale = 1; % Do not convert pixels to um
+scale = calculate_scale(magnification, fieldSize);
 if ~isfield(allData.(experiment).(magnification), well)
     disp(['Loading the graph of well ', well, '...'])
     allData = update_all_data(allData, experiment, magnification,...
@@ -52,6 +52,7 @@ diameter = allData.(experiment).(magnification).(well).diameter;
 [distances, existingEdgeLength] = distances_distributions(G, xNodes, yNodes);
 [pd_dist, pd_edgeLength, density] = find_probability_distributions(G, distances, existingEdgeLength);
 
+
 % Specify distance axis you want to plot
 dAxis = 0:cutoffDistance;
 
@@ -70,7 +71,7 @@ hold on
 plot(dAxis, pEdgeLength)
 plot(dAxis, pDist)
 hold off
-set(gca,'YScale', 'log')
+%set(gca,'YScale', 'log')
 legend('P(d_{ij})', 'P(d_{ij}|E_{ij})', 'P(E_{ij}|d_{ij})')
 
 save('bayesianAnalysis.mat', 'well', 'magnification', 'experiment', 'dAxis',...
@@ -144,9 +145,11 @@ end
 
 function [pd_dist, pd_edgeLength, density] = find_probability_distributions(G, distances, existingEdgeLength)
     
-    pd_dist = fitdist(distances(distances > 0),'kernel');
+    pd_dist = fitdist(distances(distances > 0),'kernel','Width',5);
+    %pd_dist = truncate(pd_dist, min(existingEdgeLength), inf);
     pd_dist = truncate(pd_dist, 0, inf);
-    pd_edgeLength = fitdist(existingEdgeLength, 'kernel');
+    pd_edgeLength = fitdist(existingEdgeLength, 'kernel','Width',5);
+    %pd_edgeLength = truncate(pd_edgeLength, min(distances(distances > 0)), inf);
     pd_edgeLength = truncate(pd_edgeLength, 0, inf);
 
     density = calculate_density(G);

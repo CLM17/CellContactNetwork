@@ -153,9 +153,9 @@ end
 
 function [pd_dist, pd_edgeLength, density] = find_probability_distributions(G, distances, existingEdgeLength)
     
-    pd_dist = fitdist(distances(distances > 0),'kernel');
+    pd_dist = fitdist(distances(distances > 0),'kernel','Width',5);
     pd_dist = truncate(pd_dist, 0, inf);
-    pd_edgeLength = fitdist(existingEdgeLength, 'kernel');
+    pd_edgeLength = fitdist(existingEdgeLength, 'kernel','Width',5);
     pd_edgeLength = truncate(pd_edgeLength, 0, inf);
 
     density = calculate_density(G);
