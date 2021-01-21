@@ -8,12 +8,12 @@ close all
 
 experiment = 'WKS024';
 magnification = 'M20';
-well = 'D02';               % well name
+well = 'C02';               % well name
 network_specifier = '_ml';
-nodeData = '';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
-nodeSize = 3;               % node size
+nodeData = 'betweenness';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
+nodeSize = 5;               % node size
 nodeColor = 'w';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
-lineWidth = 2;              % thickness of edges (= lines)
+lineWidth = 1;              % thickness of edges (= lines)
 edgeColor = 'w';            % color of edges ('w'=white, 'k'=black, 'g'=green, etc)
 edgeTransparency = 0.8;     % transparency of edges (0=fully transparent, 1=not transparent)
 qualityCheck = false;

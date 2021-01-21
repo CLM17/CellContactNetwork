@@ -10,12 +10,12 @@ experiment = 'WKS024';
 magnification = 'M20';
 well = 'D02';               % well name
 network_specifier = '_ml';
-nodeData = 'none';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
-nodeSize = 1;               % node size
+nodeData = '';   % change to centrality name ('betweenness', 'closeness', etc) or cell measurement ('area', 'circularity', 'longness') or 'none'.
+nodeSize = 1.5;               % node size
 nodeColor = 'k';            % color of nodes ('w'=white, 'k'=black, 'g'=green, etc)
 lineWidth = 0.5;              % thickness of edges (= lines)
 edgeColor = 'k';            % color of edges ('w'=white, 'k'=black, 'g'=green, etc)
-edgeTransparency = 0.5;     % transparency of edges (0=fully transparent, 1=not transparent)
+edgeTransparency = 0.7;     % transparency of edges (0=fully transparent, 1=not transparent)
 qualityCheck = false;
 
 %% ------------------------------START CODE--------------------------------
@@ -76,15 +76,15 @@ end
 % Draw graph as network & save the file
 figure()
 
-% p = plot(G, 'XData', xNodes, 'YData', yNodes, ...
-%     'NodeColor', nodeColor,...
-%     'MarkerSize',nodeSize,...
-%     'NodeLabel',{},...
-%     'LineWidth',lineWidth,...
-%     'EdgeColor',edgeColor,...
-%     'EdgeAlpha',edgeTransparency);
+p = plot(G, 'XData', xNodes, 'YData', yNodes, ...
+    'NodeColor', nodeColor,...
+    'MarkerSize',nodeSize,...
+    'NodeLabel',{},...
+    'LineWidth',lineWidth,...
+    'EdgeColor',edgeColor,...
+    'EdgeAlpha',edgeTransparency);
 
-plot(xNodes, yNodes, '.', 'Color', colorHela, 'MarkerSize', 5)
+%plot(xNodes, yNodes, '.', 'Color', colorHela, 'MarkerSize', 5)
 
 if ismember(nodeData, centralityNames) || ismember(nodeData, measurementNames)
     rgb = vals2colormap(allData.(experiment).(magnification).(well).(nodeData));
@@ -97,8 +97,8 @@ end
 % p.NodeColor = colors;
 
 set(gcf,'PaperOrientation','landscape');
-set(gcf,'Color','w','Units','inches','Position',[1 1 6 6 ])
-saveas(gcf, fullfile('Figures', 'FullNetworks',[experiment, '_', well,'_positions_only.pdf']))
+set(gcf,'Color','w','Units','inches','Position',[1 1 12 12 ])
+saveas(gcf, fullfile('Figures', 'FullNetworks',[experiment, '_', well,'network.png']))
 
 %% Quality check
 
