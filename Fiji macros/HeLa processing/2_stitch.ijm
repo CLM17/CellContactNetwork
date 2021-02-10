@@ -251,7 +251,6 @@ setBatchMode(true);
 
 wellFolder = root + "\\" + well;
 output_file = wellFolder + "\\"+well+"_fused.tif";
-print(wellFolder);
 
 // If the fused image already exists, ask the user if they want to overwrite:
 if (File.exists(output_file)){
@@ -261,7 +260,7 @@ if (File.exists(output_file)){
 // Get dimensions of the first tile:
 fname = root+"\\"+well+"\\tiles\\tile_00.tif";
 tileFolder = root + "\\" + well + "\\tiles";
-print(tileFolder);
+print("Preparing to stitch tiles in "+tileFolder);
 thresholdTileFolder = tileFolder + "\\thresholds";
 open(fname);
 getDimensions(width, height, channels, slices, frames);
@@ -299,36 +298,9 @@ if (!(brute_force)){
 
 // Brute-force stitching, only if normal stitching does not work
 else if (brute_force){
-
-	// Initialize a string to store the tile configurations
-	outputString = "";
-	outputString = outputString + "# Define the number of dimensions we are working on\n";
-	outputString = outputString + "dim = 2\n";
-	outputString = outputString + "\n";
-	outputString = outputString + "# Define the image coordinates\n";
-
-	// Initialize tile positions on the grid
-	x = 0;
-	y = 0;
-
-	// Loop over tiles
-	for (i = 0; i < w*w; i++) {
-		
-		nr = number_to_string(i);
-		outputString = outputString + "tile_" + nr + ".tif; ; ";
-		outputString = outputString + "(" + d2s(x,1) + ", " + d2s(y,1) + ")\n";
-
-		y = y + height;
-		if (y == w*height){
-			y = 0;
-			x = x + width;
-		}
-	}
-	textFileConfigurations = tileFolder + "/TileConfiguration.registered.txt";
-	File.saveString(outputString, textFileConfigurations);
-	fusedWidth = d2s(w*width, 0);
-	fusedHeight = d2s(w*height, 0);
-	run("Tiles to Fused", "tiledirectory="+tileFolder+" welllocationstextfile="+textFileConfigurations+" fusedwidth="+fusedWidth+" fusedheight="+fusedHeight);
+	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+d2s(w,0)+" grid_size_y="+d2s(w,0)+" tile_overlap=0 first_file_index_i=0 directory="+tileFolder+" file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0 max/avg_displacement_threshold=0 absolute_displacement_threshold=0 computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display] use");
+	tileConfiguration = File.openAsString(tileFolder + "//TileConfiguration.txt");
+	File.saveString(tileConfiguration, tileFolder + "//TileConfiguration.registered.txt");
 }
 
 // Copy registered tile configuration to thresholds folder
@@ -347,11 +319,28 @@ if(!(s == "yes")){
 	exit("Macro was aborted by user");
 }
 
-title = "Set the right colors.";
-message = "Change the LUT of the channels to set the right colors.\nPress OK when you are done.";
-waitForUser(title, message);
+title1 = "Set the right colors.";
+message1 = "Change the LUT of the channels to set the right colors.\nPress OK when you are done.";
+waitForUser(title1, message1);
 
-// Save result (2-channel and RGB color)
+// Make oval selection
+setTool("oval");
+
+title2 = "Make oval selection";
+message2 = "\nFit a circular selection to the well borders while holding shift.\nPress OK when you are done.";
+waitForUser(title2, message2);
+
+if (roiManager("count") > 0){
+	roiManager("Deselect");
+	roiManager("Delete");
+}
+roiManager("Add");
+
+// Crop image
+run("Crop");
+run("Clear Outside");
+
+// Save result (both as seperate channels and as RGB color)
 print("Saving the result...");
 saveAs("Tiff", output_file);
 
@@ -360,8 +349,6 @@ run("RGB Color");
 saveAs(root+"\\"+well+"\\"+well+"_fused_RGB.tif");
 close("*");
 
-// Stitch the thresholded images if the user wants to
-//run("Tiles to Fused", "tiledirectory="+tileFolder+" welllocationstextfile="+textFileConfigurations+" fusedwidth="+width+" fusedheight="+height);
 if(stitch_th){
 	
 	// Get dimensions of first thresholded tile
@@ -369,11 +356,19 @@ if(stitch_th){
 	open(fname);
 	getDimensions(width, height, channels, slices, frames);
 	close();
-	
+
+	// Stitch thresholds with the registered coordinates
 	print("Starting the stitch of thresholded images...");
 	run("Grid/Collection stitching", "type=[Positions from file] order=[Defined by TileConfiguration] directory="+thresholdTileFolder+" layout_file=TileConfiguration.registered.txt fusion_method=[Max. Intensity] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
-	rename("threshold");
-	run("Split Channels");
+
+	// Give correct name & split channels if necessary
+	if (channels == 1){
+		rename("C1-threshold");
+	}
+	else if (channels > 1) {
+		rename("threshold");
+		run("Split Channels");
+	}
 
 	// Run over the channels
 	chNames = newArray(channels);
@@ -394,11 +389,15 @@ if(stitch_th){
 			suggestedName = "atubulin";
 		}
 		
-		// Ask the user if they are happy with the tiles
+		// Ask the user if they are happy with the thresholds
 		s = getString("Are you happy with the thresholds?", "yes");
 
 		// If yes, save result
 		if(s=="yes"){
+			// Crop thresholded image
+			roiManager("Select", 0);
+			run("Crop");
+			run("Clear Outside");
 			chNames[c] = getString("Name of this channel:", suggestedName);
 			print("Saving the thresholded result...");
 			save(wellFolder + "/" + well+"_th_"+ chNames[c] +".tif");
@@ -407,31 +406,45 @@ if(stitch_th){
 		
 		// If not, let the user see the tile nrs.
 		else{
-			// Ask the user clockwise or counterclockwise
-			s = getString("Was the spiral grid clockwise or counterclockwise?", "clockwise");
-
-			clockwise = false;
-			if(s == "clockwise"){
-				clockwise = true;
-			}
 			
-			spiral_grid = make_spiral_grid(w,w,clockwise);
 			setJustification("center");
 			setFont("SansSerif", 300);
-		
-			x = 0;
-			y = 0;
-			for (i = 0; i < w*w; i++){
-				img_nr = spiral_grid[x + y*w];
-				drawString(number_to_string(img_nr), (x+0.5)*width, (y+0.5)*height, "red");
+
+			// Read registered tile configuration
+			fileName = tileFolder + "\\TileConfiguration.registered.txt";
+			file = File.openAsString(fileName);
+			lines = split(file, "\n");
+
+			tileNrs = newArray(w*w);
+			x = newArray(w*w);
+			y = newArray(w*w);
+			
+			count = 0;
+			for (i = 4; i < lines.length; i++) {
+			
+				splitLine = split(lines[i], ";");
+			
+				// Get tile nr
+				splitTileName = split(splitLine[0], "_");
+				splitTileNr = split(splitTileName[1], ".");
+				tileNrs[count] = splitTileNr[0];
+			
+				// Get tile coordinate
+				splitCoordinate = split(splitLine[2], ",");
+				x[count] = parseInt(substring(splitCoordinate[0],2));
+				y[count] = parseInt(substring(splitCoordinate[1],1,lengthOf(splitCoordinate[1])-1));
 				
-				// Update position
-				y = y + 1;
-				if (y == w){
-					y = 0;
-					x = x + 1;
-				}
+				count = count + 1;
 			}
+			
+			// Get minx and miny (for reference frame)
+			Array.getStatistics(x, minx, maxx, meanx, stdDevx);
+			Array.getStatistics(y, miny, maxy, meany, stdDevy);
+
+			// Draw tile nrs on image
+			for (i = 0; i < w*w; i++) {
+				drawString(tileNrs[i], x[i] - minx + width/2, y[i] - miny + height/2, "red");
+			}			
 			waitForUser("These are the tile numbers. Use the macro thresholdIndividualTiles to manually set a threshold on the tiles you wish to adjust.");
 		}
 	}
