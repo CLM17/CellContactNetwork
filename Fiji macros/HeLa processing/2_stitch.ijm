@@ -233,6 +233,125 @@ function number_to_string(nr){
 	return nr_string;
 }
 
+function replace_configuration_coordinates_ending_with_zero(tileFolder,w){
+	//-----------------------------------------------------
+	// If the stitching plugin cannot find an overlap for a certain file,
+	// it will place this tile somewhere near the center of the fused image.
+	// These wrongly placed tiles can be identified, because their coordinates
+	// end with ".0" (a single zero afer the digit).
+	// This function replaces the wrong coordinates in the 
+	// file TileConfiguration.registered.txt (it places these tiles in the upper left corner).
+	//-----------------------------------------------------
+	
+	// Read registered tile configuration
+	fileName = tileFolder + "\\TileConfiguration.registered.txt";
+	file = File.openAsString(fileName);
+	lines = split(file, "\n");
+	newLines = lines;
+	
+	tileNrs = newArray(w*w);
+	x = newArray(w*w);
+	y = newArray(w*w);
+	
+	// First, save all x and y coordinates to find the min.
+	count = 0;
+	for (i = 4; i < lines.length; i++) {
+	
+		splitLine = split(lines[i], ";");
+	
+		// Get tile nr
+		splitTileName = split(splitLine[0], "_");
+		splitTileNr = split(splitTileName[1], ".");
+		tileNrs[count] = splitTileNr[0];
+	
+		splitCoordinate = split(splitLine[2], ",");
+		x[count] = parseInt(substring(splitCoordinate[0],2));
+		y[count] = parseInt(substring(splitCoordinate[1],1,lengthOf(splitCoordinate[1])-1));
+		
+		count = count + 1;
+	}
+	
+	// Get minx and miny
+	Array.getStatistics(x, minx, maxx, meanx, stdDevx);
+	Array.getStatistics(y, miny, maxy, meany, stdDevy);
+	
+	// Loop again through the file and replace all coordinates that contain an 
+	// x or y value ending with ".0" with minx and miny.
+	for (i = 4; i < lines.length; i++) {
+	
+		splitLine = split(lines[i], ";");
+	
+		// Get tile nr
+		splitTileName = split(splitLine[0], "_");
+		splitTileNr = split(splitTileName[1], ".");
+	
+		// Get tile coordinate
+		splitCoordinate = split(splitLine[2], ",");
+		xStr = substring(splitCoordinate[0],2);
+		xStrSplit = split(xStr, ".");
+		yStr = substring(splitCoordinate[1],1,lengthOf(splitCoordinate[1])-1);
+		yStrSplit = split(yStr, ".");
+
+		// If one of the coordinates ends with "0", replace 
+		// both coordinates with the min.
+		if((xStrSplit[1]=="0") | (yStrSplit[1]=="0")){
+			newLine = splitLine[0] + ";" + splitLine[1] + ";" + " (" + d2s(minx,2) + ", " + d2s(miny,2) + ")";
+			newLines[i] = newLine;
+		}
+	}
+	
+	newString = "";
+	for (i = 0; i < newLines.length; i++) {
+		newString = newString + newLines[i] + "\n";
+	}
+	
+	File.saveString(newString, tileFolder + "//TileConfiguration.registered.txt");
+}
+
+function draw_tile_nrs(tileFolder,w){
+	//-----------------------------------------------------
+	// This function draws tile nrs on the fused image.
+	//-----------------------------------------------------
+	setJustification("center");
+	setFont("SansSerif", 300);
+
+	// Read registered tile configuration
+	fileName = tileFolder + "\\TileConfiguration.registered.txt";
+	file = File.openAsString(fileName);
+	lines = split(file, "\n");
+
+	tileNrs = newArray(w*w);
+	x = newArray(w*w);
+	y = newArray(w*w);
+	
+	count = 0;
+	for (i = 4; i < lines.length; i++) {
+	
+		splitLine = split(lines[i], ";");
+	
+		// Get tile nr
+		splitTileName = split(splitLine[0], "_");
+		splitTileNr = split(splitTileName[1], ".");
+		tileNrs[count] = splitTileNr[0];
+	
+		// Get tile coordinate
+		splitCoordinate = split(splitLine[2], ",");
+		x[count] = parseInt(substring(splitCoordinate[0],2));
+		y[count] = parseInt(substring(splitCoordinate[1],1,lengthOf(splitCoordinate[1])-1));
+		
+		count = count + 1;
+	}
+	
+	// Get minx and miny (for reference frame)
+	Array.getStatistics(x, minx, maxx, meanx, stdDevx);
+	Array.getStatistics(y, miny, maxy, meany, stdDevy);
+
+	// Draw tile nrs on image
+	for (i = 0; i < w*w; i++) {
+		drawString(tileNrs[i], x[i] - minx + width/2, y[i] - miny + height/2, "red");
+	}
+}
+
 //----------------------------------START SCRIPT---------------------------------
 
 close("*");
@@ -294,6 +413,16 @@ print("Starting the stitching...");
 if (!(brute_force)){
 	print("stitching");
 	run("Grid/Collection stitching", "type=[Grid: column-by-column] order=[Down & Right                ] grid_size_x="+d2s(w,0)+" grid_size_y="+d2s(w,0)+" tile_overlap="+overlap+" first_file_index_i=0 directory="+tileFolder+" file_names=tile_{ii}.tif output_textfile_name=TileConfiguration.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 compute_overlap computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
+
+	setBatchMode("show");
+	s = getString("Are there any wrongly placed tiles near the center of the image? (yes/no)?", "no");
+	if(s == "yes"){
+		close("*");
+		print("Repeating stitch with updated coordinates...");
+		replace_configuration_coordinates_ending_with_zero(tileFolder,w);
+		wait(1000);
+		run("Grid/Collection stitching", "type=[Positions from file] order=[Defined by TileConfiguration] directory="+tileFolder+" layout_file=TileConfiguration.registered.txt fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 absolute_displacement_threshold=3.50 computation_parameters=[Save memory (but be slower)] image_output=[Fuse and display]");
+	}
 }
 
 // Brute-force stitching, only if normal stitching does not work
@@ -316,6 +445,7 @@ setBatchMode("show");
 // Ask the user if they are happy with the fused image. If not, abort macro
 s = getString("Are you happy with the stitched image?", "yes");
 if(!(s == "yes")){
+	//draw_tile_nrs(tileFolder,w);
 	exit("Macro was aborted by user");
 }
 

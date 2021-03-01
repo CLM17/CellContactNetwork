@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+nw# -*- coding: utf-8 -*-
 """
 Created on Tue Sep 15 15:46:11 2020
 
@@ -261,7 +261,7 @@ def find_network(wts, connectivity=8):
     if connectivity == 4:
         selem[0,0] = 0
     
-    # Initialize network dict with COM locations:
+    # Initialize network matrix:
     N,M = wts.shape
     num_cells = np.max(wts)
     network = np.zeros((num_cells, num_cells))
