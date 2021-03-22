@@ -15,7 +15,7 @@ rgb = label2rgb(seg,'jet',[0,0,0],'shuffle');
 
 % Check the fields of 'Network' datastructure
 % to see all cell measurements
-Network = load('Network','-mat');
+Network = load('network.mat');
 G = graph(Network.contact_matrix);
 
 %% Physical parameters

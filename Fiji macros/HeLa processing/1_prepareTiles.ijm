@@ -296,6 +296,27 @@ function find_ch_operation_boolean(nr_channels, ch_operation_string){
 
 }
 
+
+function find_name_of_first_image_in_list(file_list){
+	
+	//---------------------------------------------------------------------
+	// Some files in a raw directory might not be images.
+	// This function finds the name of the first HCA image in the directory.
+	// This name serves as a template to find other files.
+	//---------------------------------------------------------------------
+	
+	for (i = 0; i < file_list.length; i++) {
+		fileName = file_list[i];
+		splitFileName = split(fileName, "_");
+		if (splitFileName[0] == "MFGTMP") { // The file is an image made by the HCA
+			img0 = fileName;
+			break
+		}
+	}
+	print(i);
+	return img0;
+}
+
 function number_to_string(nr){
 	//------------------------------------------------------
 	// This function converts an integer nr into a string.
