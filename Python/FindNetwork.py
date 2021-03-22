@@ -227,38 +227,34 @@ def create_overlapping_columns(mask_list, patch_locations, edge_thickness, simil
     num_patches_mm = np.size(patch_locations[0])
     num_patches_nn = np.size(patch_locations[1])
     overlapping_columns = []
-    
-    # Progress bar
-    with Bar('Aligning patches in columns ', max=num_patches_nn) as bar:
 
-        # loop over all columns
-        for nn in range(0, num_patches_nn):
+    # loop over all columns
+    for nn in range(0, num_patches_nn):
+
+        print('Aligning patches in column ',nn,'...')
+        patches_in_column = []
+
+        # loop over rows in steps of 2 (avoid the last patch in column)
+        for mm in range(0,num_patches_mm-1,2):
+
+            # Get patch1, patch2 and patch_ol
+            patch_nr = nn * num_patches_mm + mm
+            if mm==0: # if we are at the top of the column
+                patch1 = np.copy(mask_list[patch_nr])         # patch1 (upper patch) is new patch from patch_list
+                patches_in_column.append(patch1)
+            else:
+                patch1 = np.copy(patches_in_column[-1])       # patch1 (upper patch) is previously processed patch
+            patch2 = np.copy(mask_list[patch_nr + 2])         # patch2 is lower patch
+            patch_ol = np.copy(mask_list[patch_nr + 1])       # patch_ol is overlapping patch
+
+            # Align patch1 and patch2 using overlap
+            patch1_new,patch2_new = align_patches(patch1, patch2, patch_ol, edge_thickness, similarity_threshold, axis=0)
+            patches_in_column[-1] = patch1_new     # overwrite first patch
+            patches_in_column.append(patch2_new)   # append new patch
     
-            #print('Aligning patches in column ',nn,'...')
-            patches_in_column = []
-    
-            # loop over rows in steps of 2 (avoid the last patch in column)
-            for mm in range(0,num_patches_mm-1,2):
-    
-                # Get patch1, patch2 and patch_ol
-                patch_nr = nn * num_patches_mm + mm
-                if mm==0: # if we are at the top of the column
-                    patch1 = np.copy(mask_list[patch_nr])         # patch1 (upper patch) is new patch from patch_list
-                    patches_in_column.append(patch1)
-                else:
-                    patch1 = np.copy(patches_in_column[-1])       # patch1 (upper patch) is previously processed patch
-                patch2 = np.copy(mask_list[patch_nr + 2])         # patch2 is lower patch
-                patch_ol = np.copy(mask_list[patch_nr + 1])       # patch_ol is overlapping patch
-    
-                # Align patch1 and patch2 using overlap
-                patch1_new,patch2_new = align_patches(patch1, patch2, patch_ol, edge_thickness, similarity_threshold, axis=0)
-                patches_in_column[-1] = patch1_new     # overwrite first patch
-                patches_in_column.append(patch2_new)   # append new patch
-    
-            # Combine patches into a column
-            aligned_patches = np.concatenate(patches_in_column,axis=0)
-            overlapping_columns.append(aligned_patches)
-            bar.next()
+        # Combine patches into a column
+        aligned_patches = np.concatenate(patches_in_column,axis=0)
+        overlapping_columns.append(aligned_patches)
         
     return overlapping_columns
 
@@ -267,30 +263,26 @@ def align_overlapping_columns(overlapping_columns, edge_thickness, similarity_th
     
     num_columns = len(overlapping_columns)
     aligned_columns = []
-    
-    # Progress bar
-    with Bar('Aligning overlapping columns', max=int((num_columns-1)/2)) as bar:
 
-        # loop over columns in steps of 2 (avoiding the last one)
-        for nn in range(0,num_columns-1,2):
-    
-            #print('Aligning columns ', nn, ' and ',nn+2,'...')
-    
-            # Get patch1, patch2 and patch_ol
-            if nn==0:
-                patch1 = np.copy(overlapping_columns[nn])  # first column
-                aligned_columns.append(patch1)
-            else:
-                patch1 = np.copy(aligned_columns[-1])      # left column
-            patch2 = np.copy(overlapping_columns[nn+2])    # right column
-            patch_ol = np.copy(overlapping_columns[nn+1])  # overlapping column
-    
-            # Align patch1 and patch2 using overlap
-            patch1_new,patch2_new = align_patches(patch1, patch2, patch_ol, edge_thickness, similarity_threshold, axis=1)
-    
-            aligned_columns[-1] = patch1_new    # overwrite left column
-            aligned_columns.append(patch2_new)  # append right column
-            bar.next()
+    # loop over columns in steps of 2 (avoiding the last one)
+    for nn in range(0,num_columns-1,2):
+
+        print('Aligning columns ', nn, ' and ',nn+2,'...')
+
+        # Get patch1, patch2 and patch_ol
+        if nn==0:
+            patch1 = np.copy(overlapping_columns[nn])  # first column
+            aligned_columns.append(patch1)
+        else:
+            patch1 = np.copy(aligned_columns[-1])      # left column
+        patch2 = np.copy(overlapping_columns[nn+2])    # right column
+        patch_ol = np.copy(overlapping_columns[nn+1])  # overlapping column
+
+        # Align patch1 and patch2 using overlap
+        patch1_new,patch2_new = align_patches(patch1, patch2, patch_ol, edge_thickness, similarity_threshold, axis=1)
+
+        aligned_columns[-1] = patch1_new    # overwrite left column
+        aligned_columns.append(patch2_new)  # append right column       
         
     return aligned_columns
 
@@ -531,14 +523,15 @@ properties = ['label', 'area', 'centroid', 'orientation', 'minor_axis_length', '
 # you can set the average cell `diameter` in pixels yourself (recommended) 
 # diameter can be a list or a single number for all images
 
-channels = [1,2] # R=cytoplasm and B=nucleus
-cell_diameter = 97 #106 for HeLa cells at 20x, 97 for HeLa cells at 10x
+channels = [1,3] # R=cytoplasm and B=nucleus
+cell_diameter = 125 #125 for HeLa cells at 20x, 97 for HeLa cells at 10x
 cell_size_threshold = 200     # minimal cell size in pixels 100 for HeLa at 10x, 200 for HeLa at 20x
 
+#%%
 # -------------------------------START CODE------------------------------------
 
 # tkinter GUI
-fused_img_list = choose_images_with_gui()
+fused_img_list = choose_images_with_gui(initial_dir)
     
 # loop through files
 for filename in fused_img_list:
