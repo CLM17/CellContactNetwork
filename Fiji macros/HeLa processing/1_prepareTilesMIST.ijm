@@ -380,6 +380,33 @@ function get_img_file_name(file0, well, nr, ch){
 	file_name = parts[0] + "_" + parts[1] + "_" + well + "f" + nr_string + "d" + d2s(ch,0) + ".TIF";
 	return file_name;
 }
+
+function get_true_indeces_as_string(boolean_list){
+	//---------------------------------------------
+	// This function takes as input a boolean list.
+	// Example: boolean_list = [true,false,true].
+	// It outputs a string with the indeces where 
+	// the boolean_list is True.
+	// Example: boolean_list_str = "0,2".
+	// If all entries are false, the function returns "None".
+	//---------------------------------------------
+	boolean_list_str = "";
+	for (i = 0; i < boolean_list.length; i++) {
+		if (boolean_list[i] == true){
+			if (boolean_list_str == ""){
+				boolean_list_str = boolean_list_str + d2s(i, 0);
+			}
+			else{
+				boolean_list_str = boolean_list_str + ", " + d2s(i, 0);
+			}
+		}
+	}
+	if (boolean_list_str == ""){
+		boolean_list_str = "None";
+	}
+	return boolean_list_str;
+}
+
 //---------------------------END FUNCTIONS-----------------------------
 
 //---------------------------START SCRIPT------------------------------
@@ -504,7 +531,7 @@ nr_bits_string = Dialog.getChoice();
 downscale_factor = Dialog.getNumber();
 see = Dialog.getCheckbox();
 ch_enhance = get_next_checkbox_group(nr_channels);
-fraction_separated = Dialog.getNumber();
+fraction_saturated = Dialog.getNumber();
 ch_equalize = get_next_checkbox_group(nr_channels);
 ch_subtract_background = get_next_checkbox_group(nr_channels);
 rolling_ball_radius = Dialog.getNumber();
@@ -526,6 +553,12 @@ if ((threshold_method_list[0] == "-") && num_threshold_channels != 0) {
 if ((threshold_method_list.length != num_threshold_channels) && (threshold_method_list[0] != "-")) {
 	exit("Sorry, the number of threshold methods you provided is not the same \nas the number of channels to threshold.\n \nExample:\n number of channels = 2\n threshold methods = Li,Otsu");
 }
+
+// Convert boolean lists to string (for metadata file)-----------------------------------
+ch_enhance_str = get_true_indeces_as_string(ch_enhance);
+ch_equalize_str = get_true_indeces_as_string(ch_equalize);
+ch_subtract_background_str = get_true_indeces_as_string(ch_subtract_background);
+ch_threshold_str = get_true_indeces_as_string(ch_threshold);
 
 // Follows-------------------------------------------------------------------------------
 if (spiral_direction=="Clockwise") {
@@ -556,6 +589,30 @@ for (l = 0; l < well_list.length; l++) {
 	well_folder = root + q + well;
 	tile_folder = well_folder + q + "tiles";
 	threshold_folder = tile_folder + q + "thresholds";
+
+	// Save parameters to txt file
+	metadata = "RawDataFolder = " + input_folder + "\n";
+	metadata = metadata + "NumberOfTiles = " + d2s(w*w,0) + "\n";
+	metadata = metadata + "SpiralDirection = " + spiral_direction + "\n";
+	metadata = metadata + "NumberOfBits = " + nr_bits_string + "\n";
+	metadata = metadata + "DownscaleFactor = " + d2s(downscale_factor,0) + "\n";
+	metadata = metadata + "ChannelsEnhanceContrast = " + ch_enhance_str + "\n";
+	if (ch_enhance_str != "None") {
+		metadata = metadata + "FractionSaturatedPixels = " + d2s(fraction_saturated,1) + "\n";
+	}
+	metadata = metadata + "ChannelsEqualizeHistogram = " + ch_equalize_str + "\n";
+	metadata = metadata + "ChannelsSubtractBackground = " + ch_subtract_background_str + "\n";
+	if (ch_subtract_background_str != "None") {
+		metadata = metadata + "RollingBallRadius = " + d2s(rolling_ball_radius,0) + "\n";
+	}
+	metadata = metadata + "ChannelsThreshold = " + ch_threshold_str + "\n";
+	if (ch_threshold_str != "None") {
+		metadata = metadata + "ThresholdMethods = " + threshold_methods + "\n";
+		metadata = metadata + "SigmaGaussianBlur = " + sigma_string + "\n";
+	}
+	metadata_file_path = well_folder + q + well + "_parameters_prepareTiles.txt";
+	File.saveString(metadata, metadata_file_path);
+	print(">>>> Saved metadata file in " + well_folder + ".\n");
 	
 	// List all images in the raw input folder:
 	file_list = getFileList(input_folder);
@@ -605,10 +662,10 @@ for (l = 0; l < well_list.length; l++) {
 	
 			// Perform the operations if the user asked for it:
 			if ((ch_enhance[ch] == true) && (ch_equalize[ch] == false)){
-				run("Enhance Contrast...", "saturated="+d2s(fraction_separated,1)+" normalize");
+				run("Enhance Contrast...", "saturated="+d2s(fraction_saturated,1)+" normalize");
 			}
 			if ((ch_enhance[ch] == true) && (ch_equalize[ch] == true)){
-				run("Enhance Contrast...", "saturated="+d2s(fraction_separated,1)+" normalize equalize");
+				run("Enhance Contrast...", "saturated="+d2s(fraction_saturated,1)+" normalize equalize");
 			}
 			if (ch_subtract_background[ch] == true){
 				run("Subtract Background...", "rolling="+d2s(rolling_ball_radius,0)+" disable");
@@ -642,7 +699,7 @@ for (l = 0; l < well_list.length; l++) {
 		}
 		
 	}
-	print("Finished the preparation, you can now start stitching well "+well+".");
+	print(">>>> Finished the preparation, you can now start stitching well "+well+".");
 
 }
-print("Prepared all wells.");
+print(">>>> Prepared all wells.");

@@ -110,6 +110,32 @@ function make_column_grid(width, height){
 	}
 	return matrix;
 }
+
+function get_true_indeces_as_string(boolean_list){
+	//---------------------------------------------
+	// This function takes as input a boolean list.
+	// Example: boolean_list = [true,false,true].
+	// It outputs a string with the indeces where 
+	// the boolean_list is True.
+	// Example: boolean_list_str = "0,2".
+	// If all entries are false, the function returns "None".
+	//---------------------------------------------
+	boolean_list_str = "";
+	for (i = 0; i < boolean_list.length; i++) {
+		if (boolean_list[i] == true){
+			if (boolean_list_str == ""){
+				boolean_list_str = boolean_list_str + d2s(i, 0);
+			}
+			else{
+				boolean_list_str = boolean_list_str + ", " + d2s(i, 0);
+			}
+		}
+	}
+	if (boolean_list_str == ""){
+		boolean_list_str = "None";
+	}
+	return boolean_list_str;
+}
 //---------------------------------END FUNCTIONS---------------------------------
 
 //---------------------------------START SCRIPT----------------------------------
@@ -131,6 +157,9 @@ threshold_folder = tile_folder + q + "thresholds";
 output_file = well_folder + q + well + "_fused.tif";
 
 // Check inputs -----------------------------------------------------------------
+if (!File.isDirectory(tile_folder)){
+	exit("Sorry, No tile folder could be found in "+well_folder+".\nPlease check the root folder you entered.");
+}
 file_list = getFileList(tile_folder);
 if (!check_if_tile_nr_is_present(w*w-1,file_list)){
 	exit("Sorry, the chosen width/height of "+d2s(w,0)+" cannot be correct. \nThere are less than "+d2s(w*w,0)+" images in the input folder of well "+well+".");
@@ -258,13 +287,34 @@ if (ol_channel_in_channels_to_stitch == false){
 	exit("Sorry, the channel you use to calculate overlap must be part of the channels to be stitched.")
 }
 
-// Get threshold channels to stich as array -----------------------------------------------
+// Get threshold channels to stich as array and as string----------------------------------
 th_channels_to_stitch = newArray(0);
 for (i = 0; i < nr_th_channels; i++) {
 	if (stitch_th_channels[i] == true){
 		th_channels_to_stitch = Array.concat(th_channels_to_stitch,th_channels[i]);
 	}
 }
+
+// Save parameters to metadata file
+stitch_channels_str = get_true_indeces_as_string(stitch_channels);
+if (nr_th_channels > 0){
+	stitch_th_channels_str = get_true_indeces_as_string(stitch_th_channels);
+}
+else{
+	stitch_th_channels_str = "None";
+}
+metadata = "NumberOfFields = " + d2s(w*w,0) + "\n";
+metadata = metadata + "ChannelsStitched = " + stitch_channels_str + "\n";
+metadata = metadata + "ThresholdedChannelsStitched = " + stitch_th_channels_str + "\n";
+if (stitch_th_channels_str != "None"){
+	metadata = metadata + "NamesOfThresholdedChannels = " + suggested_names_str + "\n";
+}
+metadata = metadata + "ChannelUsedForCalculatingOverlap = " + ol_channel_str + "\n";
+metadata = metadata + "EstimatedOverlap = " + d2s(ol,1) + "%\n";
+metadata = metadata + "OverlapUncertainty = " + d2s(ol_uncertainty,1) + "%\n";
+metadata_file_path = well_folder + q + well + "_parameters_stitching.txt";
+File.saveString(metadata, metadata_file_path);
+print(">>>> Saved metadata file in " + well_folder + ".\n");
 
 // Stitch overlap channel -----------------------------------------------------------------
 
