@@ -67,8 +67,8 @@ def get_mean_intensities(stack, segmented):
     for ii,value in enumerate(cell_values):
         intensity_values = stack[:,segmented==value]
         for t in range(0,num_timepoints):
-            mean_intensities[ii,t] = np.mean(intensity_values[t])
-            std_intensities[ii,t] = np.std(intensity_values[t])
+            mean_intensities[value-1,t] = np.mean(intensity_values[t])
+            std_intensities[value-1,t] = np.std(intensity_values[t])
                                
     return mean_intensities, std_intensities
 

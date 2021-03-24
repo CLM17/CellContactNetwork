@@ -465,7 +465,7 @@ def choose_images_with_gui(initial_dir):
     
     if var1.get() and not(var2.get()):           # user chose to process only 1 file
         root = tk.Tk()
-        root.filename =  tk.filedialog.askopenfilename(initialdir = initial_dir,title = "Select file",filetypes = [("tif files",".tif")])
+        root.filename = tk.filedialog.askopenfilename(initialdir = initial_dir,title = "Select file",filetypes = [("tif files",".tif")])
         fused_img_list.append(root.filename)
         root.destroy() # close GUI
     
@@ -512,18 +512,127 @@ def choose_images_with_gui(initial_dir):
     return fused_img_list
 
 #%%
+def choose_parameters_with_gui():
+    '''
+    This function starts up a TKInter graphical user interface to choose all parameters.
+    '''
+    
+    gui = tk.Tk()
+    gui.geometry("600x350")
+    
+    patch_width = tk.IntVar(value=1024)
+    tk.Label(gui, text="Patch width:").place(x=10,y=10)
+    tk.Label(gui, text="(pixels)").place(x=300,y=10)
+    entry_width = tk.Entry(gui, textvariable=patch_width)
+    entry_width.grid(row=0, sticky=tk.W)
+    entry_width.place(x=200,y=10,width=90)
+    
+    patch_height = tk.IntVar(value=1024)
+    tk.Label(gui, text="Patch height:").place(x=10,y=40)
+    tk.Label(gui, text="(pixels)").place(x=300,y=40)
+    entry_height = tk.Entry(gui, text='Patch height:', textvariable=patch_height)
+    entry_height.grid(row=0, sticky=tk.W)
+    entry_height.place(x=200,y=40,width=90)
+    
+    edge_thickness = tk.IntVar(value=60)
+    tk.Label(gui, text="Size of edge region:").place(x=10,y=70)
+    tk.Label(gui, text="(pixels)").place(x=300,y=70)
+    entry_thickness = tk.Entry(gui, textvariable=edge_thickness)
+    entry_thickness.grid(row=0, sticky=tk.W)
+    entry_thickness.place(x=200,y=70,width=90)
+    
+    similarity_threshold = tk.DoubleVar(value=0.7)
+    tk.Label(gui, text="Cell similarity threshold:").place(x=10,y=100)
+    tk.Label(gui, text="(cells with sufficient similarity are merged)").place(x=300,y=100)
+    entry_similarity = tk.Entry(gui, textvariable=similarity_threshold)
+    entry_similarity.grid(row=0, sticky=tk.W)
+    entry_similarity.place(x=200,y=100,width=90)
+    
+    cell_distance = tk.IntVar(value=8)
+    tk.Label(gui, text="Max distance separating cells:").place(x=10,y=130)
+    tk.Label(gui, text="(pixels)").place(x=300,y=130)
+    entry_distance = tk.Entry(gui, textvariable=cell_distance)
+    entry_distance.grid(row=0, sticky=tk.W)
+    entry_distance.place(x=200,y=130,width=90)
+    
+    minimal_cell_size = tk.IntVar(value=500)
+    tk.Label(gui, text="Minimal cell area:").place(x=10,y=160)
+    tk.Label(gui, text="(pixels)").place(x=300,y=160)
+    entry_minsize = tk.Entry(gui, textvariable=minimal_cell_size)
+    entry_minsize.grid(row=0, sticky=tk.W)
+    entry_minsize.place(x=200,y=160,width=90)
+    
+    channels_str = tk.StringVar(value="1,3")
+    tk.Label(gui, text="Cellpose channels:").place(x=10,y=190)
+    tk.Label(gui, text="(first for cyto, second for nucleus)").place(x=300,y=190)
+    entry_channels = tk.Entry(gui, textvariable=channels_str)
+    entry_channels.grid(row=0, sticky=tk.W)
+    entry_channels.place(x=200,y=190,width=90)
+    
+    diameter = tk.IntVar(value=85)
+    tk.Label(gui, text="Cellpose cell diameter:").place(x=10,y=220)
+    tk.Label(gui, text="(pixels)").place(x=300,y=220)
+    entry_diameter = tk.Entry(gui, textvariable=diameter)
+    entry_diameter.grid(row=0, sticky=tk.W)
+    entry_diameter.place(x=200,y=220,width=90)
+    
+    num_cores = tk.IntVar(value=-1)
+    tk.Label(gui, text="Number of CPU cores:").place(x=10,y=250)
+    tk.Label(gui, text="(set to -1 to use all available cores)").place(x=300,y=250)
+    entry_cores = tk.Entry(gui, textvariable=num_cores)
+    entry_cores.grid(row=0, sticky=tk.W)
+    entry_cores.place(x=200,y=250,width=90)
+    
+    button = tk.Button(gui, text='Continue', command=gui.destroy)
+    button.grid(row=2, sticky=tk.W, pady=4)
+    button.place(x=10,y=300)
+    tk.mainloop()
+    
+    # Convert channels string to a list with 2 channels (first channel is 
+    # for cytoplasm, second channel for nuclei).
+    channels_list = (channels_str.get()).split(",")
+    if (len(channels_list) != 2):
+        raise ValueError("There should be 2 Cellpose channels! Example: 1,3")
+    channels = []
+    channels.append(int(channels_list[0]))
+    channels.append(int(channels_list[1]))
+    
+    # Number of CPU cores
+    if (num_cores.get() == -1) or (num_cores.get() > multiprocessing.cpu_count()):
+        num_cpu_cores = multiprocessing.cpu_count()
+    else:
+        num_cpu_cores = num_cores.get()
+    
+    # Get parameters as a string (to save metadata file)
+    metadata = "CellposePatchWidth = " + str(patch_width.get()) + "\n"
+    metadata = metadata + "CellposePatchHeight = " + str(patch_height.get()) + "\n"
+    metadata = metadata + "EdgeRegionThickness = " + str(edge_thickness.get()) + "\n"
+    metadata = metadata + "CellSimilarityThreshold = " + str(similarity_threshold.get()) + "\n"
+    metadata = metadata + "DistanceSeparatingCells = " + str(cell_distance.get()) + "\n"
+    metadata = metadata + "MinimalCellSize = " + str(minimal_cell_size.get()) + "\n"
+    metadata = metadata + "CellposeChannels = " + channels_str.get() + "\n"
+    metadata = metadata + "CellposeDiameter = " + str(diameter.get()) + "\n"
+    metadata = metadata + "NumberOfCpuCores = " + str(num_cpu_cores) + "\n"
+    
+    return [patch_width.get(), patch_height.get(), edge_thickness.get(),
+            similarity_threshold.get(), cell_distance.get(), 
+            minimal_cell_size.get(), channels,
+            diameter.get(), num_cpu_cores, metadata]
+    
+#%%
+def save_metadata_file(directory, metadata):
+    '''
+    This function saves metadata to a txt file inside a well directory
+    '''
+    metadata_file_name = os.path.join(directory, 'parameters_segmentation_and_network.txt')
+    metadata_file = open(metadata_file_name, 'w')
+    n = metadata_file.write(metadata)
+    metadata_file.close()
+    
+    return True
+
+#%%
 # ----------------------------SPECIFY PARAMETERS-------------------------------
-
-# General
-[patch_height, patch_width] = [1024,1024]
-edge_thickness = 60                     # size of edge region in pixels
-similarity_threshold = 0.7              # overlapping cells which overlap more than similarity_threshold will be merged
-cell_distance = 8                       # number of pixels that separate two cells (must be 2 or larger)
-minimal_cell_size = 500               # minimal cell size in pixels. 100 for HeLa at 10x, 200 for HeLa at 20x
-
-# Cellpose parameters (see below for more info)
-channels = [1,3]                        # [1,3] for R=cytoplasm and B=nucleus
-cell_diameter = 45                      # 125 for HeLa cells at 20x, 97 for HeLa cells at 10x
 
 # Cell properties to measure
 properties = ['label', 'area', 
@@ -532,9 +641,15 @@ properties = ['label', 'area',
               'major_axis_length', 
               'eccentricity', 'perimeter']
 
-# Machine-specific
-initial_dir = r"M:\tnw\bn\dm\Shared"    # Starting directory
-num_cpu_cores = None                    # set to 'None' to use the maximum possible number of cores
+# Starting directory (for GUI)
+initial_dir = r'M:\tnw\bn\dm\Shared'    
+
+# Choose images and parameters with TKInter GUI
+fused_img_list = choose_images_with_gui(initial_dir)
+
+[patch_width, patch_height, edge_thickness, similarity_threshold,  
+     cell_distance, minimal_cell_size, channels, cell_diameter, num_cpu_cores, 
+     parameters_as_string] = choose_parameters_with_gui()
 
 # CELLPOSE PARAMETERS
 # model_type='cyto' or model_type='nuclei'
@@ -559,15 +674,14 @@ num_cpu_cores = None                    # set to 'None' to use the maximum possi
 
 #%%
 # -------------------------------START CODE------------------------------------
-
-# tkinter GUI
-fused_img_list = choose_images_with_gui(initial_dir)
     
 # loop through files
 for filename in fused_img_list:
 
     directory = os.path.split(filename)[0]
-    print(directory)
+    # Save metadata file
+    saved = save_metadata_file(directory, parameters_as_string)
+    print('>>>> SAVED METADATA FILE IN ' + directory + '.')
     
     print('>>>> READING FUSED IMAGE IN ' + directory + '...')
     fused = io.imread(filename)
